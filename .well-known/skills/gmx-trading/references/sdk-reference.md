@@ -96,13 +96,13 @@ class Tokens {
   get tokensConfig(): Record<string, Token>;
 
   // Get all token data with current prices
-  async getTokens(p?: { account?: string }): Promise<{
+  async getTokensData(p?: { account?: string }): Promise<{
     tokensData?: TokensData;
     pricesUpdatedAt?: number;
   }>;
 
   // Get token balances for an account
-  async getTokenBalances(p?: {
+  async getTokensBalances(p?: {
     account?: string;
     tokensList?: { address: string; isSynthetic?: boolean }[];
   }): Promise<{
@@ -315,7 +315,9 @@ const { GmxApiSdk } = require("@gmx-io/sdk/v2");
 class GmxApiSdk {
   constructor(config: { chainId: number });
 
-  fetchMarketsInfo(): Promise<MarketsInfoResult>;
+  // Returns array-like of MarketInfo objects (numeric keys, not { marketsInfoData })
+  // Access: result[0].marketTokenAddress, result[0].indexTokenAddress, etc.
+  fetchMarketsInfo(): Promise<MarketInfo[]>;
   fetchTokensData(): Promise<TokensDataResult>;
   fetchPositionsInfo(p: { account: string; includeRelatedOrders?: boolean }): Promise<PositionsInfoResult>;
   fetchOrders(p: { account: string }): Promise<OrdersResult>;

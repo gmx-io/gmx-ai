@@ -4,7 +4,7 @@ description: Trade perpetuals and swap tokens on GMX V2 — a decentralized exch
 license: MIT
 metadata:
   author: gmx-io
-  version: "0.1"
+  version: "0.2"
   chains: "arbitrum, avalanche, botanix"
 ---
 
@@ -91,7 +91,8 @@ const sdk = new GmxSdk({
 const { GmxApiSdk } = require("@gmx-io/sdk/v2");
 
 const apiSdk = new GmxApiSdk({ chainId: 42161 });
-const { marketsInfoData } = await apiSdk.fetchMarketsInfo();
+const markets = await apiSdk.fetchMarketsInfo(); // Returns array-like of MarketInfo objects
+// Access: markets[0].marketTokenAddress, markets[0].indexTokenAddress, etc.
 ```
 
 ## Order Helpers
@@ -107,8 +108,10 @@ The SDK provides convenience methods that handle amount calculation and transact
 const { marketsInfoData, tokensData } = await sdk.markets.getMarketsInfo();
 
 // Find ETH/USD market by index token symbol
+// Note: On Arbitrum, perpetual markets use "WETH" as the index token symbol.
+// Markets with symbol "ETH" are spot-only swap pools.
 const ethUsdMarket = Object.values(marketsInfoData).find(
-  (m) => tokensData[m.indexTokenAddress]?.symbol === "ETH" && !m.isSpotOnly
+  (m) => tokensData[m.indexTokenAddress]?.symbol === "WETH" && !m.isSpotOnly
 );
 
 // Get token addresses from market
@@ -180,23 +183,75 @@ await sdk.orders.long({
 - `payAmount` — Pay this much collateral. Alternative: use `sizeAmount` to specify position size
 - `fromAmount` / `toAmount` — For swaps, specify input or desired output amount
 
+### Step 3: Close a position
+
+There is no convenience `close()` method. Closing requires computing decrease amounts via `getDecreasePositionAmounts()` from `@gmx-io/sdk/utils/trade`, then calling `createDecreaseOrder()`.
+
+> **Important:** Always re-fetch `marketsInfoData` and `tokensData` right before closing. These contain oracle prices that go stale within seconds — using old data produces an `acceptablePrice` the keeper will reject.
+
+```typescript
+const { getDecreasePositionAmounts } = require("@gmx-io/sdk/utils/trade");
+
+// 1. Fetch FRESH market data (prices go stale quickly)
+const { marketsInfoData, tokensData } = await sdk.markets.getMarketsInfo();
+
+// 2. Get the position to close
+const positionsInfo = await sdk.positions.getPositionsInfo({
+  marketsInfoData, tokensData, showPnlInLeverage: false,
+});
+const position = Object.values(positionsInfo).find(
+  (p) => p.marketAddress === marketAddress && p.isLong === true
+);
+
+// 3. Compute decrease amounts
+const marketInfo = marketsInfoData[position.marketAddress];
+const collateralToken = tokensData[position.collateralTokenAddress];
+const { minCollateralUsd, minPositionSizeUsd } = await sdk.positions.getPositionsConstants();
+const uiFeeFactor = await sdk.utils.getUiFeeFactor();
+
+const decreaseAmounts = getDecreasePositionAmounts({
+  marketInfo,
+  collateralToken,
+  isLong: position.isLong,
+  position,
+  closeSizeUsd: position.sizeInUsd,   // Full close. Use a smaller value for partial close.
+  keepLeverage: false,
+  userReferralInfo: undefined,
+  minCollateralUsd,
+  minPositionSizeUsd,
+  uiFeeFactor,
+  isSetAcceptablePriceImpactEnabled: false,
+});
+
+// 4. Submit the decrease order
+await sdk.orders.createDecreaseOrder({
+  marketInfo,
+  marketsInfoData,
+  tokensData,
+  isLong: position.isLong,
+  allowedSlippage: 300,    // 3% — use higher slippage for decrease to avoid keeper rejection
+  decreaseAmounts,
+  collateralToken,
+});
+```
+
 ## SDK Modules
 
 | Module | Key Methods | Description |
 |--------|------------|-------------|
 | `sdk.markets` | `getMarkets()`, `getMarketsInfo()`, `getDailyVolumes()` | Market data and liquidity info |
-| `sdk.tokens` | `getTokens()`, `getTokenBalances()` | Token metadata, prices, balances |
+| `sdk.tokens` | `getTokensData()`, `getTokensBalances()` | Token metadata, prices, balances |
 | `sdk.positions` | `getPositions()`, `getPositionsInfo()`, `getPositionsConstants()` | Open position data |
 | `sdk.orders` | `long()`, `short()`, `swap()`, `getOrders()`, `cancelOrders()` | Order creation and management |
 | `sdk.trades` | `getTradeHistory()` | Historical trade actions |
-| `sdk.utils` | `getGasLimits()`, `getGasPrice()`, `getExecutionFee()` | Gas and fee estimation |
+| `sdk.utils` | `getGasLimits()`, `getGasPrice()`, `getExecutionFee()`, `getUiFeeFactor()` | Gas and fee estimation |
 | `sdk.oracle` | `getTickers()`, `getMarkets()`, `getTokens()` | Direct oracle data access |
 
 **Typical read flow:**
 
 ```typescript
 const { marketsInfoData, tokensData } = await sdk.markets.getMarketsInfo();
-const { positionsInfoData } = await sdk.positions.getPositionsInfo({
+const positionsInfo = await sdk.positions.getPositionsInfo({
   marketsInfoData, tokensData, showPnlInLeverage: false,
 });
 const { ordersInfoData } = await sdk.orders.getOrders({
@@ -204,19 +259,28 @@ const { ordersInfoData } = await sdk.orders.getOrders({
 });
 ```
 
-**Write flow — use convenience helpers or low-level methods:**
+### Convenience vs Low-level Methods
 
-```typescript
-// High-level (recommended)
-await sdk.orders.long(params);
-await sdk.orders.short(params);
-await sdk.orders.swap(params);
+The SDK has two tiers for order creation:
 
-// Low-level (full control)
-await sdk.orders.createIncreaseOrder({ ... });
-await sdk.orders.createDecreaseOrder({ ... });
-await sdk.orders.createSwapOrder({ ... });
-```
+**Convenience methods** — handle amount calculation, execution fee, and tx submission automatically. Use these for opening positions and swaps:
+
+| Method | Purpose | Key Params |
+|--------|---------|-----------|
+| `sdk.orders.long()` | Open long position | `marketAddress`, `payTokenAddress`, `collateralTokenAddress`, `payAmount`, `leverage` |
+| `sdk.orders.short()` | Open short position | Same as `long()` |
+| `sdk.orders.swap()` | Swap tokens | `fromTokenAddress`, `toTokenAddress`, `fromAmount` |
+| `sdk.orders.cancelOrders()` | Cancel pending orders | `orderKeys: string[]` |
+
+**Low-level methods** — require you to pre-compute amounts, provide full market/token objects, and handle execution fees. Required for closing positions (no convenience `close()` method exists):
+
+| Method | Purpose | Required Setup |
+|--------|---------|---------------|
+| `sdk.orders.createIncreaseOrder()` | Open position (full control) | `IncreasePositionAmounts`, `marketInfo`, `tokensData` |
+| `sdk.orders.createDecreaseOrder()` | Close/reduce position | `DecreasePositionAmounts` via `getDecreasePositionAmounts()` |
+| `sdk.orders.createSwapOrder()` | Swap (full control) | `SwapAmounts`, swap path |
+
+> **Key gap:** There is no `sdk.orders.close()`. To close a position, use `getDecreasePositionAmounts()` from `@gmx-io/sdk/utils/trade` + `createDecreaseOrder()`. See [Step 3: Close a position](#step-3-close-a-position) for the full pattern.
 
 ## Order Types
 
@@ -283,24 +347,7 @@ Base URL: `https://{network}-api.gmxinfra.io`
 | `/markets` | GET | Market configuration (index/long/short tokens) |
 | `/markets/info` | GET | Extended market info with pool sizes and utilization |
 
-### OpenAPI Endpoints
-
-Base URL: `https://gmx-api-{network}.gmx.io/api/v1`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/markets` | GET | Market metadata |
-| `/tickers` | GET | Current prices per market |
-| `/tokens` | GET | Token information |
-| `/positions?account={addr}` | GET | Open positions for an account |
-| `/orders?account={addr}` | GET | Pending orders for an account |
-| `/rates` | GET | Funding and borrowing rates |
-| `/apy` | GET | Pool APY data |
-| `/performance?account={addr}` | GET | Account trading performance |
-
-Swagger spec: `{base_url}/swagger.json`
-
-Network slugs: `arbitrum`, `avalanche`, `botanix`
+All endpoints are served from the Oracle base URL above. The legacy `gmx-api-{network}.gmx.io` domain is no longer available.
 
 ### GraphQL (Subsquid)
 
@@ -312,14 +359,15 @@ Example — fetch recent trade actions:
 query {
   tradeActions(
     where: { account_eq: "0x..." }
-    orderBy: transaction_timestamp_DESC
+    orderBy: timestamp_DESC
     limit: 10
   ) {
     id
     eventName
     orderType
     sizeDeltaUsd
-    transaction { timestamp, hash }
+    timestamp
+    transactionHash
   }
 }
 ```
@@ -340,11 +388,113 @@ query {
 
 **BigInt amounts:** All amounts use BigInt. Prices are scaled to 30 decimals (`1 USD = 10^30`). Token amounts use their native decimals (e.g., USDC = 6, ETH = 18).
 
+**Stale data:** `marketsInfoData` and `tokensData` contain oracle prices at fetch time. These go stale within seconds. Always re-fetch fresh data before operations that depend on current prices — especially `createDecreaseOrder()`, which computes `acceptablePrice` from the data you provide. Using stale prices causes keeper rejection.
+
 **Multicall batching:** The SDK batches RPC calls automatically. Production chains use `batchSize: 1024 * 1024` bytes per multicall with no waiting. This is configured per-chain in `BATCH_CONFIGS`.
 
 **GMX Account:** Cross-chain trading from Ethereum, Base, or BNB Chain via LayerZero/Stargate bridge. Users can trade on Arbitrum/Avalanche without bridging manually.
 
 **Subaccounts:** Delegate trading to a subaccount address for one-click trading. The subaccount can execute orders without requiring the main wallet signature each time.
+
+## Full Example: Open → Monitor → Close
+
+End-to-end flow that opens a long position, monitors it, and closes it.
+
+```typescript
+const { GmxSdk } = require("@gmx-io/sdk");
+const { getDecreasePositionAmounts } = require("@gmx-io/sdk/utils/trade");
+const { createWalletClient, http } = require("viem");
+const { privateKeyToAccount } = require("viem/accounts");
+const { arbitrum } = require("viem/chains");
+
+// ─── Setup ───────────────────────────────────────────────────────────────────
+
+const account = privateKeyToAccount(process.env.PRIVATE_KEY);
+const sdk = new GmxSdk({
+  chainId: 42161,
+  rpcUrl: "https://arb1.arbitrum.io/rpc",
+  oracleUrl: "https://arbitrum-api.gmxinfra.io",
+  subsquidUrl: "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql",
+  account: account.address,
+  walletClient: createWalletClient({
+    account, chain: arbitrum, transport: http("https://arb1.arbitrum.io/rpc"),
+  }),
+});
+
+// ─── 1. Resolve addresses ───────────────────────────────────────────────────
+
+const { marketsInfoData, tokensData } = await sdk.markets.getMarketsInfo();
+
+const ethMarket = Object.values(marketsInfoData).find(
+  (m) => tokensData[m.indexTokenAddress]?.symbol === "WETH" && !m.isSpotOnly
+);
+const marketAddress = ethMarket.marketTokenAddress;
+const usdcAddress = Object.values(tokensData).find((t) => t.symbol === "USDC").address;
+
+// ─── 2. Open long ───────────────────────────────────────────────────────────
+
+await sdk.orders.long({
+  marketAddress,
+  payTokenAddress: usdcAddress,
+  collateralTokenAddress: usdcAddress,
+  payAmount: 10_000000n,   // 10 USDC
+  leverage: 30000n,        // 3x
+  allowedSlippageBps: 100,
+  skipSimulation: true,
+});
+
+// ─── 3. Wait for position to appear (keeper executes in 1-30s) ──────────────
+
+let position;
+for (let i = 0; i < 40; i++) {
+  await new Promise((r) => setTimeout(r, 3000));
+  const info = await sdk.positions.getPositionsInfo({
+    marketsInfoData, tokensData, showPnlInLeverage: false,
+  });
+  position = Object.values(info).find(
+    (p) => p.marketAddress === marketAddress && p.isLong === true
+  );
+  if (position) break;
+}
+if (!position) throw new Error("Position did not appear within 120s");
+
+console.log("Position opened:", {
+  sizeUsd: position.sizeInUsd.toString(),
+  leverage: position.leverage.toString(),
+  entryPrice: position.entryPrice.toString(),
+});
+
+// ─── 4. Close position (re-fetch fresh data first!) ─────────────────────────
+
+const fresh = await sdk.markets.getMarketsInfo();
+const freshPositions = await sdk.positions.getPositionsInfo({
+  marketsInfoData: fresh.marketsInfoData,
+  tokensData: fresh.tokensData,
+  showPnlInLeverage: false,
+});
+const pos = Object.values(freshPositions).find(
+  (p) => p.marketAddress === marketAddress && p.isLong === true
+);
+
+const marketInfo = fresh.marketsInfoData[pos.marketAddress];
+const collateralToken = fresh.tokensData[pos.collateralTokenAddress];
+const { minCollateralUsd, minPositionSizeUsd } = await sdk.positions.getPositionsConstants();
+const uiFeeFactor = await sdk.utils.getUiFeeFactor();
+
+const decreaseAmounts = getDecreasePositionAmounts({
+  marketInfo, collateralToken, isLong: pos.isLong, position: pos,
+  closeSizeUsd: pos.sizeInUsd, keepLeverage: false,
+  userReferralInfo: undefined, minCollateralUsd, minPositionSizeUsd, uiFeeFactor,
+  isSetAcceptablePriceImpactEnabled: false,
+});
+
+await sdk.orders.createDecreaseOrder({
+  marketInfo, marketsInfoData: fresh.marketsInfoData, tokensData: fresh.tokensData,
+  isLong: pos.isLong, allowedSlippage: 300, decreaseAmounts, collateralToken,
+});
+
+console.log("Close order submitted — keeper will execute in 1-30s");
+```
 
 ## Limitations
 

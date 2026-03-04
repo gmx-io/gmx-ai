@@ -7,10 +7,6 @@
     {
       "name": "gmx-trading",
       "path": "skills/gmx-trading/SKILL.md"
-    },
-    {
-      "name": "gmx-liquidity",
-      "path": "skills/gmx-liquidity/SKILL.md"
     }
   ]
 }

@@ -3,8 +3,6 @@
 ## Pre-publish Checklist
 
 ```bash
-cd /Users/qwinn/projects/qwinndev/gmx-ai
-
 # Validate structure
 find . -type f | grep -v .git | sort
 
@@ -20,8 +18,8 @@ grep -r "TODO\|FIXME\|TBD" skills/
 # Frontmatter starts with ---
 head -1 skills/gmx-trading/SKILL.md
 
-# well-known matches skills
-diff -r skills/gmx-trading well-known/skills/gmx-trading
+# .well-known matches skills
+diff -r skills/gmx-trading .well-known/skills/gmx-trading
 ```
 
 ---
@@ -31,7 +29,6 @@ diff -r skills/gmx-trading well-known/skills/gmx-trading
 Create the repo under `gmx-io` org:
 
 ```bash
-cd /Users/qwinn/projects/qwinndev/gmx-ai
 git add -A
 git commit -m "Initial release: gmx-trading skill v1.0"
 gh repo create gmx-io/gmx-ai --public --source=. --push
@@ -76,9 +73,9 @@ claude
 
 ---
 
-## Step 3 — Web Discovery (well-known)
+## Step 3 — Web Discovery (.well-known)
 
-The `well-known/skills/` directory enables discovery at a predictable URL. After deploying to a web server (e.g., via GitHub Pages or Cloudflare Pages):
+The `.well-known/skills/` directory enables discovery at a predictable URL. After deploying to a web server (e.g., via GitHub Pages or Cloudflare Pages):
 
 ```
 https://gmx-io.github.io/gmx-ai/.well-known/skills/index.json
@@ -105,8 +102,7 @@ The official repo at `github.com/anthropics/skills` accepts community contributi
 gh repo fork anthropics/skills --clone
 
 # Add skill
-cp -r /Users/qwinn/projects/qwinndev/gmx-ai/skills/gmx-trading \
-  skills/community/gmx-trading
+cp -r skills/gmx-trading skills/community/gmx-trading
 
 # Submit PR
 cd skills
@@ -147,8 +143,6 @@ agent-skills publish gmx-io/gmx-ai
 ### npm (optional)
 
 ```bash
-cd /Users/qwinn/projects/qwinndev/gmx-ai
-
 # Add package.json
 cat > package.json << 'EOF'
 {
@@ -157,7 +151,7 @@ cat > package.json << 'EOF'
   "description": "Agent skills for trading on GMX V2",
   "license": "MIT",
   "repository": "gmx-io/gmx-ai",
-  "files": ["skills/", "well-known/", ".claude-plugin/", "LICENSE", "README.md"]
+  "files": ["skills/", ".well-known/", ".claude-plugin/", "LICENSE", "README.md"]
 }
 EOF
 
@@ -203,8 +197,8 @@ GitHub: github.com/gmx-io/gmx-ai
 
 ```bash
 # Edit files in skills/gmx-trading/
-# Then sync to well-known
-cp -r skills/gmx-trading/* well-known/skills/gmx-trading/
+# Then sync to .well-known
+cp -r skills/gmx-trading/* .well-known/skills/gmx-trading/
 
 # Bump version in SKILL.md frontmatter
 # Commit and push
@@ -213,14 +207,3 @@ git commit -m "Update gmx-trading skill to v1.1"
 git push
 ```
 
-### Adding gmx-liquidity skill later
-
-```bash
-mkdir -p skills/gmx-liquidity/references
-mkdir -p well-known/skills/gmx-liquidity/references
-
-# Create SKILL.md, references
-# Update .claude-plugin/marketplace.json to add second skill entry
-# Update well-known/skills/index.json to add second skill entry
-# Update README.md
-```

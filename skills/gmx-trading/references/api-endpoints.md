@@ -85,20 +85,6 @@ Extended market data including pool sizes, utilization, open interest, and fee f
 
 ---
 
-## Additional Oracle Endpoints
-
-The Oracle REST API (same base URL as above) also serves extended data:
-
-#### GET /markets/info
-Extended market data including pool sizes, utilization, open interest, and fee factors. Response wrapped in `{ "markets": [...] }`.
-
-#### GET /prices/candles
-OHLC price candles. Query params: `tokenSymbol` (required), `period` (`1m`/`5m`/`15m`/`1h`/`4h`/`1d`), `limit` (default 100).
-
-> **Note:** The legacy `gmx-api-{network}.gmx.io` domain is no longer available. All API endpoints are served from the Oracle base URL (`{network}-api.gmxinfra.io`).
-
----
-
 ## GraphQL (Subsquid)
 
 Base URL pattern: `https://gmx.squids.live/gmx-synthetics-{network}:prod/api/graphql`
