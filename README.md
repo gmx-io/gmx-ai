@@ -4,6 +4,13 @@ Agent skills for trading on [GMX V2](https://app.gmx.io).
 
 ## Install
 
+**Claude Code (plugin marketplace):**
+```
+/plugin marketplace add gmx-io/gmx-ai
+/plugin install gmx-io@gmx-ai
+```
+
+**Vercel Skills CLI:**
 ```bash
 npx skills add gmx-io/gmx-ai
 ```
