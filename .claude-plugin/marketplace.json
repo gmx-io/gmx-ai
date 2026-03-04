@@ -7,8 +7,14 @@
   "license": "MIT",
   "plugins": [
     {
-      "name": "gmx-trading",
-      "path": "skills/gmx-trading/SKILL.md"
+      "name": "gmx-io",
+      "source": "./plugins/gmx-io",
+      "description": "Agent skills for trading perpetuals and swapping tokens on GMX V2",
+      "version": "0.1.0",
+      "author": {
+        "name": "gmx-io"
+      },
+      "license": "MIT"
     }
   ]
 }
