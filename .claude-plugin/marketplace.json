@@ -1,9 +1,11 @@
 {
   "name": "gmx-ai",
   "description": "Agent skills for trading perpetuals and swapping tokens on GMX V2",
-  "author": "gmx-io",
+  "owner": {
+    "name": "gmx-io"
+  },
   "license": "MIT",
-  "skills": [
+  "plugins": [
     {
       "name": "gmx-trading",
       "path": "skills/gmx-trading/SKILL.md"
