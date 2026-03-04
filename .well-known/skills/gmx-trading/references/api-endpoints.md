@@ -46,84 +46,42 @@ Signed oracle prices for order execution. Used internally by keepers.
 
 #### GET /tokens
 
-Token list with metadata.
+Token list with metadata. Response is wrapped in a `tokens` key.
 
 ```json
-[
-  {
-    "symbol": "ETH",
-    "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-    "decimals": 18,
-    "isSynthetic": false
-  }
-]
+{
+  "tokens": [
+    {
+      "symbol": "ETH",
+      "address": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      "decimals": 18,
+      "isSynthetic": false
+    }
+  ]
+}
 ```
 
 #### GET /markets
 
-Market configuration listing index, long, and short tokens.
+Market configuration listing index, long, and short tokens. Response is wrapped in a `markets` key.
 
 ```json
-[
-  {
-    "marketToken": "0x70d95587d40A2cdd56BBE18AB51Bbd657434570c",
-    "indexToken": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-    "longToken": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-    "shortToken": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
-  }
-]
+{
+  "markets": [
+    {
+      "name": "ETH/USD [WETH-USDC]",
+      "marketToken": "0x70d95587d40A2cdd56BBE18AB51Bbd657434570c",
+      "indexToken": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      "longToken": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      "shortToken": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+    }
+  ]
+}
 ```
 
 #### GET /markets/info
 
 Extended market data including pool sizes, utilization, open interest, and fee factors.
-
----
-
-## OpenAPI (gmx-api)
-
-Base URL pattern: `https://gmx-api-{network}.gmx.io/api/v1`
-
-| Chain | Base URL |
-|-------|---------|
-| Arbitrum | `https://gmx-api-arbitrum.gmx.io/api/v1` |
-| Avalanche | `https://gmx-api-avalanche.gmx.io/api/v1` |
-| Botanix | `https://gmx-api-botanix.gmx.io/api/v1` |
-
-Swagger spec: `{base_url}/swagger.json`
-
-### Endpoints
-
-#### GET /markets
-Market metadata — token addresses, names, and market configuration.
-
-#### GET /tickers
-Current price data per market including min/max oracle prices.
-
-#### GET /info
-Protocol-wide statistics and configuration.
-
-#### GET /tokens
-Token information with addresses and decimals.
-
-#### GET /positions?account={address}
-All open positions for a given account.
-
-**Response includes:** market, collateralToken, isLong, sizeInUsd, sizeInTokens, collateralAmount, entryPrice, markPrice, pnl, leverage, liquidationPrice.
-
-#### GET /orders?account={address}
-All pending orders for a given account.
-
-**Response includes:** orderType, market, triggerPrice, sizeDeltaUsd, isLong, createdAt.
-
-#### GET /rates
-Current funding and borrowing rates for all markets.
-
-#### GET /apy
-Pool APY data for GM token holders.
-
-#### GET /performance?account={address}
-Account trading performance statistics including total PnL, win rate, and trade count.
 
 ---
 
@@ -143,7 +101,7 @@ Base URL pattern: `https://gmx.squids.live/gmx-synthetics-{network}:prod/api/gra
 query RecentTrades($account: String!) {
   tradeActions(
     where: { account_eq: $account }
-    orderBy: transaction_timestamp_DESC
+    orderBy: timestamp_DESC
     limit: 20
   ) {
     id
@@ -157,11 +115,8 @@ query RecentTrades($account: String!) {
     acceptablePrice
     executionPrice
     isLong
-    transaction {
-      timestamp
-      hash
-      blockNumber
-    }
+    timestamp
+    transactionHash
   }
 }
 ```
@@ -176,7 +131,7 @@ query PositionIncreases($account: String!) {
       eventName_eq: "OrderExecuted"
       orderType_in: [2, 3, 8]
     }
-    orderBy: transaction_timestamp_DESC
+    orderBy: timestamp_DESC
     limit: 50
   ) {
     id
@@ -185,7 +140,8 @@ query PositionIncreases($account: String!) {
     sizeDeltaUsd
     executionPrice
     isLong
-    transaction { timestamp, hash }
+    timestamp
+    transactionHash
   }
 }
 ```
@@ -197,12 +153,12 @@ The Subsquid indexer uses cursor-based pagination with a maximum of 500 items pe
 ```graphql
 query PaginatedTrades($cursor: String) {
   tradeActionsConnection(
-    orderBy: transaction_timestamp_DESC
+    orderBy: timestamp_DESC
     first: 500
     after: $cursor
   ) {
     edges {
-      node { id, eventName, orderType }
+      node { id, eventName, orderType, timestamp, transactionHash }
       cursor
     }
     pageInfo { hasNextPage, endCursor }

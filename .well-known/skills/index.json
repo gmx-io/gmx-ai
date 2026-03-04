@@ -17,21 +17,6 @@
         "license": "MIT",
         "chains": "arbitrum, avalanche, botanix"
       }
-    },
-    {
-      "name": "gmx-liquidity",
-      "description": "Provide liquidity on GMX V2 — deposit into GM pools and GLV vaults to earn fees from trading activity on Arbitrum, Avalanche, and Botanix. Covers pool deposits, withdrawals, shifts between pools, and GLV vault operations via direct contract interaction.",
-      "path": "gmx-liquidity/SKILL.md",
-      "files": [
-        "gmx-liquidity/SKILL.md",
-        "gmx-liquidity/references/contract-addresses.md"
-      ],
-      "metadata": {
-        "author": "gmx-io",
-        "version": "0.1",
-        "license": "MIT",
-        "chains": "arbitrum, avalanche, botanix"
-      }
     }
   ]
 }
