@@ -1,0 +1,5 @@
+{
+  "name": "gmx-io",
+  "description": "Agent skills for trading perpetuals and swapping tokens on GMX V2",
+  "version": "0.1.0"
+}
