@@ -1,6 +1,6 @@
 {
   "name": "gmx-ai",
-  "description": "Agent skills for trading perpetuals and swapping tokens on GMX V2",
+  "description": "Agent skills for trading perpetuals, providing liquidity, and swapping tokens on GMX V2",
   "owner": {
     "name": "gmx-io"
   },
@@ -9,7 +9,7 @@
     {
       "name": "gmx-io",
       "source": "./plugins/gmx-io",
-      "description": "Agent skills for trading perpetuals and swapping tokens on GMX V2",
+      "description": "Agent skills for trading perpetuals, providing liquidity, and swapping tokens on GMX V2",
       "version": "0.1.0",
       "author": {
         "name": "gmx-io"
