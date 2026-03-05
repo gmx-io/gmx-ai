@@ -68,7 +68,7 @@ const { createWalletClient, http } = require("viem");
 const { privateKeyToAccount } = require("viem/accounts");
 const { arbitrum } = require("viem/chains");
 
-const account = privateKeyToAccount("0xYOUR_PRIVATE_KEY");
+const account = privateKeyToAccount(process.env.PRIVATE_KEY);
 const walletClient = createWalletClient({
   account,
   chain: arbitrum,
