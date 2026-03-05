@@ -148,11 +148,11 @@ Returns extended market data including pool sizes, utilization, open interest, a
 Before calling `ExchangeRouter.multicall()` or `GlvRouter.multicall()`:
 
 **1. Token approvals:**
-- For GM operations (deposit/withdrawal/shift): approve tokens to `SyntheticsRouter`
-- For GLV operations: approve tokens to the `Router` contract that `GlvRouter` inherits from
+- For **all operations** (GM and GLV): approve tokens to `SyntheticsRouter`
+- This applies to GM deposits/withdrawals/shifts via `ExchangeRouter` and GLV deposits/withdrawals via `GlvRouter`
 
 ```typescript
-// Approve USDC to SyntheticsRouter before GM deposit
+// Approve USDC to SyntheticsRouter (works for both GM and GLV operations)
 await usdcContract.write.approve([syntheticsRouterAddress, amount]);
 ```
 
@@ -207,21 +207,51 @@ executionFee = gasLimit × gasPrice
 | GLV Deposit (GM tokens) | `glvDepositGasLimit + markets × glvPerMarketGasLimit` | `2 + marketsCount` |
 | GLV Withdrawal | `glvWithdrawalGasLimit + markets × glvPerMarketGasLimit + withdrawalMultiToken + swaps × singleSwap` | `2 + marketsCount + swapsCount` |
 
+**Important: `marketsCount` for GLV operations.**
+GLV vaults contain many constituent GM markets — GLV [WETH-USDC] on Arbitrum has **40+ markets**. The contract validates the execution fee against the actual constituent count, and reverts with `InsufficientExecutionFee` if too low. The SDK does not expose a method to query the GLV constituent market count. Use these values:
+
+| GLV Vault | Chain | Recommended `marketsCount` |
+|-----------|-------|---------------------------|
+| GLV [WETH-USDC] | Arbitrum | 53 |
+| GLV [WBTC-USDC] | Arbitrum | 53 |
+| GLV [WAVAX-USDC] | Avalanche | 20 |
+
+Excess execution fee is always refunded, so overestimating `marketsCount` is safe. GLV execution fees are typically ~0.001 ETH — roughly 10x higher than GM operations (~0.0001 ETH) due to the large number of constituent markets.
+
 **Using the SDK to get gas parameters:**
 
 ```typescript
 const gasLimits = await sdk.utils.getGasLimits();
 const gasPrice = await sdk.utils.getGasPrice();
 
-// Example: GM deposit with no swaps
-const estimatedGasLimit = gasLimits.depositToken;
-const oraclePriceCount = 3n;
+// --- Per-operation gas limit field names from sdk.utils.getGasLimits() ---
+// GM Deposit:       gasLimits.depositToken
+// GM Withdrawal:    gasLimits.withdrawalMultiToken
+// Shift:            gasLimits.shift
+// GLV per-market:   gasLimits.glvPerMarketGasLimit
+// GLV Deposit:      gasLimits.glvDepositGasLimit
+// GLV Withdrawal:   gasLimits.glvWithdrawalGasLimit
+// Swap (per swap):  gasLimits.singleSwap
+// Base fee fields:  gasLimits.estimatedGasFeeBaseAmount,
+//                   gasLimits.estimatedGasFeePerOraclePrice,
+//                   gasLimits.estimatedFeeMultiplierFactor
 
-let gasLimit = gasLimits.estimatedGasFeeBaseAmount;
-gasLimit += gasLimits.estimatedGasFeePerOraclePrice * oraclePriceCount;
-gasLimit += estimatedGasLimit * gasLimits.estimatedFeeMultiplierFactor / 10n ** 30n;
+function calculateExecutionFee(estimatedGasLimit: bigint, oraclePriceCount: bigint): bigint {
+  let gasLimit = gasLimits.estimatedGasFeeBaseAmount;
+  gasLimit += gasLimits.estimatedGasFeePerOraclePrice * oraclePriceCount;
+  gasLimit += estimatedGasLimit * gasLimits.estimatedFeeMultiplierFactor / 10n ** 30n;
+  return gasLimit * gasPrice;
+}
 
-const executionFee = gasLimit * gasPrice;
+// Example: GM deposit (no swaps)
+const gmDepositFee = calculateExecutionFee(gasLimits.depositToken, 3n);
+
+// Example: GLV deposit (raw tokens, 53 markets, no swaps)
+const marketsCount = 53n;
+const glvDepositGas = gasLimits.glvDepositGasLimit
+  + marketsCount * gasLimits.glvPerMarketGasLimit
+  + gasLimits.depositToken;
+const glvDepositFee = calculateExecutionFee(glvDepositGas, 2n + marketsCount);
 ```
 
 ## Depositing into GM Pools
@@ -350,7 +380,7 @@ Use `GlvRouter.multicall()` (not ExchangeRouter):
 const glvRouterAddress = "0x7EAdEE2ca1b4D06a0d82fDF03D715550c26AA12F";  // Arbitrum
 const glvVaultAddress = "0x393053B58f9678C9c28c2cE941fF6cac49C3F8f9";   // Arbitrum
 
-// Approve tokens to Router (GlvRouter's base contract)
+// Approve tokens to SyntheticsRouter (same as GM operations)
 
 const multicall = [
   encodeFunctionData({
@@ -402,7 +432,7 @@ const hash = await walletClient.writeContract({
 ## GLV Withdrawals
 
 ```typescript
-// Approve GLV tokens to Router first
+// Approve GLV tokens to SyntheticsRouter first
 
 const multicall = [
   encodeFunctionData({

@@ -159,7 +159,7 @@ struct CreateGlvWithdrawalParamsAddresses {
 
 ### GLV Deposit Flow (raw tokens)
 
-1. **Approve** long/short tokens to `Router` (GlvRouter's base contract)
+1. **Approve** long/short tokens to `SyntheticsRouter`
 2. **Multicall** on `GlvRouter`:
    - `sendWnt(GlvVault, executionFee + nativeDepositAmount)`
    - `sendTokens(longToken, GlvVault, longAmount)`
@@ -169,7 +169,7 @@ struct CreateGlvWithdrawalParamsAddresses {
 
 ### GLV Deposit Flow (GM tokens)
 
-1. **Approve** GM tokens to `Router`
+1. **Approve** GM tokens to `SyntheticsRouter`
 2. **Multicall** on `GlvRouter`:
    - `sendWnt(GlvVault, executionFee)`
    - `sendTokens(gmToken, GlvVault, gmAmount)`
@@ -178,7 +178,7 @@ struct CreateGlvWithdrawalParamsAddresses {
 
 ### GLV Withdrawal Flow
 
-1. **Approve** GLV tokens to `Router`
+1. **Approve** GLV tokens to `SyntheticsRouter`
 2. **Multicall** on `GlvRouter`:
    - `sendWnt(GlvVault, executionFee)`
    - `sendTokens(glvToken, GlvVault, glvAmount)`
@@ -199,6 +199,8 @@ Field names correspond to `GasLimitsConfig` from `sdk.utils.getGasLimits()`:
 | GLV Deposit (raw) | `glvDepositGasLimit + marketsCount × glvPerMarketGasLimit + depositToken + swapsCount × singleSwap` |
 | GLV Deposit (GM) | `glvDepositGasLimit + marketsCount × glvPerMarketGasLimit` |
 | GLV Withdrawal | `glvWithdrawalGasLimit + marketsCount × glvPerMarketGasLimit + withdrawalMultiToken + swapsCount × singleSwap` |
+
+**Important:** `marketsCount` for GLV operations must reflect the actual number of constituent GM markets in the vault. GLV [WETH-USDC] and [WBTC-USDC] on Arbitrum have 40+ constituent markets — use `marketsCount: 53`. The contract reverts with `InsufficientExecutionFee` (selector `0x5dac504d`) if the fee is too low. Excess fee is refunded by the keeper.
 
 ### Oracle Price Count Formulas
 
