@@ -1,6 +1,6 @@
 # GMX Agent Skills
 
-Agent skills for trading on [GMX V2](https://app.gmx.io).
+Agent skills for trading and providing liquidity on [GMX V2](https://app.gmx.io).
 
 ## Install
 
@@ -33,6 +33,24 @@ Trade perpetuals and swap tokens on GMX V2 across Arbitrum, Avalanche, and Botan
 - Oracle, OpenAPI, and GraphQL endpoint documentation
 - Contract addresses for all supported chains
 - Order type behavior and trigger logic
+
+### gmx-liquidity
+
+Provide liquidity on GMX V2 across Arbitrum, Avalanche, and Botanix.
+
+**Capabilities:**
+- Query GM pool data (TVL, composition, utilization, capacity)
+- Deposit into GM pools (mint GM tokens)
+- Withdraw from GM pools (burn GM tokens)
+- Deposit into / withdraw from GLV vaults (multi-market auto-rebalancing)
+- Shift liquidity between GM pools atomically
+- Full contract-level viem examples with multicall patterns
+
+**Reference files included:**
+- Contract struct definitions and execution flows
+- Gas estimation formulas per operation type
+- GLV vault addresses and constituent pool details
+- Shares SDK, API, and contract address references with gmx-trading
 
 ## Links
 

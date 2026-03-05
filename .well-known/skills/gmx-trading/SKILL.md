@@ -498,8 +498,8 @@ console.log("Close order submitted — keeper will execute in 1-30s");
 
 ## Limitations
 
-- **GM pool deposits/withdrawals:** Not available in SDK. Use the app at `app.gmx.io` or wait for SDK v2.
-- **GLV vault operations:** Not available in SDK.
+- **GM pool deposits/withdrawals:** See the [gmx-liquidity](../gmx-liquidity/SKILL.md) skill for contract-level operations. SDK convenience methods not yet available.
+- **GLV vault operations:** See the [gmx-liquidity](../gmx-liquidity/SKILL.md) skill for contract-level operations. SDK convenience methods not yet available.
 - **Express orders:** Frontend-only via Gelato relay. Not exposed in the SDK.
 - **TWAP orders:** Utility functions available (`@gmx-io/sdk/utils/twap`) but no SDK method to create TWAP orders programmatically.
 - **Order updates:** Orders cannot be modified. Cancel and recreate instead (`sdk.orders.cancelOrders()`).
