@@ -4,7 +4,7 @@ description: Trade perpetuals and swap tokens on GMX V2 — a decentralized exch
 license: MIT
 metadata:
   author: gmx-io
-  version: "0.2"
+  version: "0.2.1"
   chains: "arbitrum, avalanche, botanix"
 ---
 
