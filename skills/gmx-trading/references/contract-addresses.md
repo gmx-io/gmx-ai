@@ -1,6 +1,6 @@
 # Contract Addresses
 
-Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from `@gmx-io/sdk` `configs/contracts.ts`.
+Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from [`sdk/src/configs/contracts.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts) in the gmx-interface repository.
 
 > **Note:** Most contract addresses may change on upgrades. `DataStore` and `EventEmitter` are permanent.
 
@@ -176,4 +176,8 @@ Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from `@gmx-io/
 
 ## Source
 
-Contract addresses are defined in `@gmx-io/sdk` at `sdk/src/configs/contracts.ts`. For the latest addresses, check the [GMX contracts documentation](https://docs.gmx.io) or the SDK source.
+For the latest addresses, check these files in the [gmx-interface](https://github.com/gmx-io/gmx-interface/tree/release) repository:
+
+- **Contract addresses**: [`sdk/src/configs/contracts.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts)
+- **Token addresses**: [`sdk/src/configs/tokens.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/tokens.ts)
+- **Market addresses**: [`sdk/src/configs/markets.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/markets.ts)

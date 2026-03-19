@@ -237,7 +237,7 @@ const executionFee = gasLimit * gasPrice;
 
 ## Key Contract Addresses (Quick Reference)
 
-Duplicated from [contract-addresses.md](../../gmx-trading/references/contract-addresses.md) for convenience.
+Duplicated from [contract-addresses.md](../../gmx-trading/references/contract-addresses.md) for convenience. For the latest addresses, see [`sdk/src/configs/contracts.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts) in gmx-interface.
 
 ### Arbitrum (42161)
 
@@ -284,7 +284,7 @@ Duplicated from [contract-addresses.md](../../gmx-trading/references/contract-ad
 | Avalanche | GLV [WAVAX-USDC] | `0x901eE57f7118A7be56ac079cbCDa7F22663A3874` | WAVAX `0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7` | USDC `0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E` |
 | Botanix | — | No vaults configured | — | — |
 
-GM pool addresses are dynamic and should be discovered via `sdk.markets.getMarkets()`.
+GM pool addresses are dynamic and should be discovered via `sdk.markets.getMarkets()`. GLV vault addresses can be found in [`sdk/src/configs/markets.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/markets.ts).
 
 ## Source Files
 
