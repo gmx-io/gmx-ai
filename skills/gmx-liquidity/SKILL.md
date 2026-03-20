@@ -57,7 +57,7 @@ GM pool addresses are dynamic — discover them via `sdk.markets.getMarkets()`.
 
 GLV vaults hold multiple GM tokens and auto-rebalance across markets:
 
-**Known GLV vaults:**
+**Known GLV vaults** (source: [`sdk/src/configs/markets.ts`](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/markets.ts)):
 | Chain | Vault | Long Token | Short Token | Address |
 |-------|-------|-----------|-------------|---------|
 | Arbitrum | GLV [WETH-USDC] | WETH | USDC | `0x528A5bac7E746C9A509A1f4F6dF58A03d44279F9` |
