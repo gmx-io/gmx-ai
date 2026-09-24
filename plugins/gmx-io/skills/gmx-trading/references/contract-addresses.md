@@ -12,9 +12,9 @@ Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from [`sdk/src
 |----------|---------|
 | DataStore | `0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8` |
 | EventEmitter | `0xC8ee91A54287DB53897056e12D9819156D3822Fb` |
-| ExchangeRouter | `0x1C3fa76e6E1088bCE750f23a5BFcffa1efEF6A41` |
+| ExchangeRouter | `0x7dE39FF2e232A2203196788d37e234cF8F1b83f1` |
 | SyntheticsRouter | `0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6` |
-| SyntheticsReader | `0x470fbC46bcC0f16532691Df360A07d8Bf5ee0789` |
+| SyntheticsReader | `0xfA26cBb46e2614609406de08CA1Dc7f70a684184` |
 
 ### Vaults
 
@@ -29,25 +29,25 @@ Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from [`sdk/src
 
 | Contract | Address |
 |----------|---------|
-| SubaccountRouter | `0xdD00F639725E19a209880A44962Bc93b51B1B161` |
-| GelatoRelayRouter | `0xa9090E2fd6cD8Ee397cF3106189A7E1CFAE6C59C` |
-| SubaccountGelatoRelayRouter | `0x517602BaC704B72993997820981603f5E4901273` |
+| SubaccountRouter | `0x9c05880A2AaD7530c69e18e342eDC9E06cc757db` |
+| GelatoRelayRouter | `0x5503b99308dB6923758F9A22d118207D633c4e87` |
+| SubaccountGelatoRelayRouter | `0xfD0596f708d9D950E0eF7b5d191e5F8e55b8a67f` |
 
 ### GLV (Liquidity Vaults)
 
 | Contract | Address |
 |----------|---------|
-| GlvReader | `0x2C670A23f1E798184647288072e84054938B5497` |
-| GlvRouter | `0x7EAdEE2ca1b4D06a0d82fDF03D715550c26AA12F` |
+| GlvReader | `0x85fcBD684D08053f1efAB302dCb04F22E20E65B1` |
+| GlvRouter | `0x167540D2DFF14120365CfDDF2F86e3045D4fa712` |
 | GlvVault | `0x393053B58f9678C9c28c2cE941fF6cac49C3F8f9` |
 
 ### Multichain (GMX Account)
 
 | Contract | Address |
 |----------|---------|
-| MultichainOrderRouter | `0xD38111f8aF1A7Cd809457C8A2303e15aE2170724` |
+| MultichainOrderRouter | `0xABFC734f7CFc9352AED7a97b1F6a236eae831e8A` |
 | MultichainVault | `0xCeaadFAf6A8C489B250e407987877c5fDfcDBE6E` |
-| LayerZeroProvider | `0xB6DE222dAef5029f31b8fABE498D34f3c491Ef85` |
+| LayerZeroProvider | `0x0B33EBA531e5a5A331a3Ff9F418B8205F01C2869` |
 
 ### Other
 
@@ -67,9 +67,9 @@ Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from [`sdk/src
 |----------|---------|
 | DataStore | `0x2F0b22339414ADeD7D5F06f9D604c7fF5b2fe3f6` |
 | EventEmitter | `0xDb17B211c34240B014ab6d61d4A31FA0C0e20c26` |
-| ExchangeRouter | `0x8f550E53DFe96C055D5Bdb267c21F268fCAF63B2` |
+| ExchangeRouter | `0xc002Db96E682FFF6675966F959677285a0C45Efa` |
 | SyntheticsRouter | `0x820F5FfC5b525cD4d88Cd91aCf2c28F16530Cc68` |
-| SyntheticsReader | `0x62Cb8740E6986B29dC671B2EB596676f60590A5B` |
+| SyntheticsReader | `0xa34320a507493C71Fe35E982e496F7C5d1a7fa02` |
 
 ### Vaults
 
@@ -84,25 +84,25 @@ Deployed GMX V2 Synthetics contracts per chain. Addresses sourced from [`sdk/src
 
 | Contract | Address |
 |----------|---------|
-| SubaccountRouter | `0xf43F559774d2cF7882e6E846fCb87BDe183a6Da7` |
-| GelatoRelayRouter | `0xEE2d3339CbcE7A42573C96ACc1298A79a5C996Df` |
-| SubaccountGelatoRelayRouter | `0xfaBEb65bB877600be3A2C2a03aA56a95F9f845B9` |
+| SubaccountRouter | `0xAda708aFf0f1D784D28cd8Ff4d6D977fF9599e5D` |
+| GelatoRelayRouter | `0x51fe0b7919e1208a717E9B16a097C1C3D70eFbf6` |
+| SubaccountGelatoRelayRouter | `0xa62BD1cFE2066c5bF4180b4125BBb5116eEA26c9` |
 
 ### GLV (Liquidity Vaults)
 
 | Contract | Address |
 |----------|---------|
-| GlvReader | `0x5C6905A3002f989E1625910ba1793d40a031f947` |
-| GlvRouter | `0x7E425c47b2Ff0bE67228c842B9C792D0BCe58ae6` |
+| GlvReader | `0x321EB66dD95ad33715ee615AAb8dAC6394E7b3F9` |
+| GlvRouter | `0x603B3D3aB077CA433b888c05fa59c777d5b6dCAD` |
 | GlvVault | `0x527FB0bCfF63C47761039bB386cFE181A92a4701` |
 
 ### Multichain (GMX Account)
 
 | Contract | Address |
 |----------|---------|
-| MultichainOrderRouter | `0xd099565957046a2d2CF41B0CC9F95e14a8afD13b` |
+| MultichainOrderRouter | `0x204CC947Fddd11c90e302db2A5ac3865021D1618` |
 | MultichainVault | `0x6D5F3c723002847B009D07Fe8e17d6958F153E4e` |
-| LayerZeroProvider | `0xF85Fd576bBe22Bce785B68922C1c9849d62737c0` |
+| LayerZeroProvider | `0x74eECe8cC29b3d549db97F566a4445F48ed62a0d` |
 
 ### Other
 

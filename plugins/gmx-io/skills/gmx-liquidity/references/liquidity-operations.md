@@ -243,24 +243,24 @@ Duplicated from [contract-addresses.md](../../gmx-trading/references/contract-ad
 
 | Contract | Address |
 |----------|---------|
-| ExchangeRouter | `0x1C3fa76e6E1088bCE750f23a5BFcffa1efEF6A41` |
+| ExchangeRouter | `0x7dE39FF2e232A2203196788d37e234cF8F1b83f1` |
 | SyntheticsRouter | `0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6` |
 | DepositVault | `0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55` |
 | WithdrawalVault | `0x0628D46b5D145f183AdB6Ef1f2c97eD1C4701C55` |
 | ShiftVault | `0xfe99609C4AA83ff6816b64563Bdffd7fa68753Ab` |
-| GlvRouter | `0x7EAdEE2ca1b4D06a0d82fDF03D715550c26AA12F` |
+| GlvRouter | `0x167540D2DFF14120365CfDDF2F86e3045D4fa712` |
 | GlvVault | `0x393053B58f9678C9c28c2cE941fF6cac49C3F8f9` |
 
 ### Avalanche (43114)
 
 | Contract | Address |
 |----------|---------|
-| ExchangeRouter | `0x8f550E53DFe96C055D5Bdb267c21F268fCAF63B2` |
+| ExchangeRouter | `0xc002Db96E682FFF6675966F959677285a0C45Efa` |
 | SyntheticsRouter | `0x820F5FfC5b525cD4d88Cd91aCf2c28F16530Cc68` |
 | DepositVault | `0x90c670825d0C62ede1c5ee9571d6d9a17A722DFF` |
 | WithdrawalVault | `0xf5F30B10141E1F63FC11eD772931A8294a591996` |
 | ShiftVault | `0x7fC46CCb386e9bbBFB49A2639002734C3Ec52b39` |
-| GlvRouter | `0x7E425c47b2Ff0bE67228c842B9C792D0BCe58ae6` |
+| GlvRouter | `0x603B3D3aB077CA433b888c05fa59c777d5b6dCAD` |
 | GlvVault | `0x527FB0bCfF63C47761039bB386cFE181A92a4701` |
 
 ### Botanix (3637)

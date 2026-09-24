@@ -261,7 +261,7 @@ Use `ExchangeRouter.multicall()` to batch send tokens + create deposit in one tr
 ```typescript
 import { encodeFunctionData, zeroAddress } from "viem";
 
-const exchangeRouterAddress = "0x1C3fa76e6E1088bCE750f23a5BFcffa1efEF6A41"; // Arbitrum
+const exchangeRouterAddress = "0x7dE39FF2e232A2203196788d37e234cF8F1b83f1"; // Arbitrum
 const depositVaultAddress = "0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55";   // Arbitrum
 
 // Step 1: Approve tokens to SyntheticsRouter (one-time)
@@ -377,7 +377,7 @@ const hash = await walletClient.writeContract({
 Use `GlvRouter.multicall()` (not ExchangeRouter):
 
 ```typescript
-const glvRouterAddress = "0x7EAdEE2ca1b4D06a0d82fDF03D715550c26AA12F";  // Arbitrum
+const glvRouterAddress = "0x167540D2DFF14120365CfDDF2F86e3045D4fa712";  // Arbitrum
 const glvVaultAddress = "0x393053B58f9678C9c28c2cE941fF6cac49C3F8f9";   // Arbitrum
 
 // Approve tokens to SyntheticsRouter (same as GM operations)
