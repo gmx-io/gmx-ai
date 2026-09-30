@@ -1,16 +1,18 @@
 # GMX Agent Skills
 
-Agent skills for trading and providing liquidity on [GMX V2](https://app.gmx.io).
+Agent skills for trading and providing liquidity on [GMX](https://app.gmx.io), built around `GmxApiSdk` from `@gmx-io/sdk/v2`.
 
 ## Install
 
 **Claude Code (plugin marketplace):**
+
 ```
 /plugin marketplace add gmx-io/gmx-ai
 /plugin install gmx-io@gmx-ai
 ```
 
 **Vercel Skills CLI:**
+
 ```bash
 npx skills add gmx-io/gmx-ai
 ```
@@ -19,43 +21,37 @@ npx skills add gmx-io/gmx-ai
 
 ### gmx-trading
 
-Trade perpetuals and swap tokens on GMX V2 across Arbitrum, Avalanche, and Botanix.
+Trade perpetuals and swap tokens on Arbitrum, Avalanche, and MegaETH using the GMX API SDK:
 
-**Capabilities:**
-- Open long/short positions with up to 100x leverage
-- Swap tokens at oracle prices
-- Market, limit, stop-loss, and take-profit orders
-- Query positions, markets, and trade history
-- Full TypeScript SDK (`@gmx-io/sdk`) and REST API reference
+- Discover markets, prices, trading capacity, wallet balances, positions and orders.
+- Prepare, sign, submit and track Express orders; prepare wallet-sent Classic transactions.
+- Open and close positions, swap, edit/cancel orders, and change collateral.
+- Use limit/stop orders, TP/SL, TWAP and authorized subaccounts.
 
-**Reference files included:**
-- SDK method signatures and types
-- Oracle, OpenAPI, and GraphQL endpoint documentation
-- Contract addresses for all supported chains
-- Order type behavior and trigger logic
+References cover SDK examples, HTTP routes and retry behavior, order semantics, and current contract addresses.
 
 ### gmx-liquidity
 
-Provide liquidity on GMX V2 across Arbitrum, Avalanche, and Botanix.
+Read GM pool and GLV vault data through the API SDK, and use current contracts for liquidity writes:
 
-**Capabilities:**
-- Query GM pool data (TVL, composition, utilization, capacity)
-- Deposit into GM pools (mint GM tokens)
-- Withdraw from GM pools (burn GM tokens)
-- Deposit into / withdraw from GLV vaults (multi-market auto-rebalancing)
-- Shift liquidity between GM pools atomically
-- Full contract-level viem examples with multicall patterns
+- Query pool state, APY, historical performance and GM fee earnings.
+- Discover GLV tokens and their current constituent markets.
+- Build GM/GLV deposits and withdrawals, and GM-to-GM shifts.
+- Estimate keeper fees, apply output minimums and track asynchronous execution.
 
-**Reference files included:**
-- Contract struct definitions and execution flows
-- Gas estimation formulas per operation type
-- GLV vault addresses and constituent pool details
-- Shares SDK, API, and contract address references with gmx-trading
+The API SDK does not yet build GM/GLV liquidity transactions. The skill provides contract workflows using the package's ABIs and address registry. GMX Account funding is a separate capability. Both skills are self-contained and include their own contract-address reference.
+
+## Compatibility
+
+The examples and address snapshot were checked against published `@gmx-io/sdk@2.1.2` on 2026-09-30. The skills pin `@gmx-io/sdk@2.1.2` and `viem@2.57.1`, disable install scripts, and use a lockfile for repeat installs. Review dependency audit findings and package changes before upgrading; version pins do not certify dependency safety. For plain Node scripts with 2.1.2, use CommonJS; native ESM encounters extensionless SDK imports.
+
+Skill files are synchronized across `skills/`, `.well-known/skills/`, and `plugins/gmx-io/skills/`.
 
 ## Links
 
-- [GMX Documentation](https://docs.gmx.io)
-- [GMX App](https://app.gmx.io)
+- [GMX SDK documentation](https://docs.gmx.io/docs/sdk/v2/)
+- [GMX API integration guide](https://docs.gmx.io/docs/api/integration-guide/)
+- [Contract deployments](https://docs.gmx.io/docs/api/contracts/addresses/)
 - [`@gmx-io/sdk` on npm](https://www.npmjs.com/package/@gmx-io/sdk)
 - [gmx-io/gmx-interface](https://github.com/gmx-io/gmx-interface)
 
