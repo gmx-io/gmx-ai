@@ -1,6 +1,6 @@
 # Contract addresses
 
-Snapshot checked on 2026-09-29 against `@gmx-io/sdk@2.1.1` and the [GMX interface release registry](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts). Protocol deployment versions (such as v2.2c) and npm SDK versions are different version schemes.
+Snapshot checked on 2026-09-30 against `@gmx-io/sdk@2.1.2` and the [GMX interface release registry](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts). Protocol deployment versions (such as v2.2c) and npm SDK versions are different version schemes.
 
 Resolve addresses with the installed SDK and recheck the [official deployment list](https://docs.gmx.io/docs/api/contracts/addresses/) before writes after an upgrade. Do not combine a new address with an old ABI or copy an address from another chain. Preserve source casing.
 

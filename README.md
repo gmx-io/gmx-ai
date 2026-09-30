@@ -43,7 +43,7 @@ The API SDK does not yet build GM/GLV liquidity transactions. The skill provides
 
 ## Compatibility
 
-The examples and address snapshot were checked against published `@gmx-io/sdk@2.1.1` on 2026-09-29. Install `@gmx-io/sdk@latest`, record the resolved version and consult its types when upgrading. For plain Node scripts with 2.1.1, use CommonJS; native ESM encounters extensionless SDK imports.
+The examples and address snapshot were checked against published `@gmx-io/sdk@2.1.2` on 2026-09-30. The skills pin `@gmx-io/sdk@2.1.2` and `viem@2.57.1`, disable install scripts, and use a lockfile for repeat installs. Review dependency audit findings and package changes before upgrading; version pins do not certify dependency safety. For plain Node scripts with 2.1.2, use CommonJS; native ESM encounters extensionless SDK imports.
 
 Skill files are synchronized across `skills/`, `.well-known/skills/`, and `plugins/gmx-io/skills/`.
 

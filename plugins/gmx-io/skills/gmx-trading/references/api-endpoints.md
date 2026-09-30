@@ -1,6 +1,6 @@
 # GMX API endpoints
 
-Prefer `GmxApiSdk` from `@gmx-io/sdk/v2` for typed requests and bigint parsing. This mapping was checked against package 2.1.1 on 2026-09-29. See the [API integration guide](https://docs.gmx.io/docs/api/integration-guide/) and [SDK v2](https://docs.gmx.io/docs/sdk/v2/) for current behavior.
+Prefer `GmxApiSdk` from `@gmx-io/sdk/v2` for typed requests and bigint parsing. This mapping was checked against package 2.1.2 on 2026-09-30. See the [API integration guide](https://docs.gmx.io/docs/api/integration-guide/) and [SDK v2](https://docs.gmx.io/docs/sdk/v2/) for current behavior.
 
 ## Hosts and transport
 
@@ -10,7 +10,7 @@ Prefer `GmxApiSdk` from `@gmx-io/sdk/v2` for typed requests and bigint parsing. 
 | Avalanche (43114) | `https://avalanche.gmxapi.io` | `https://avalanche.gmxapi.ai` |
 | MegaETH (4326) | `https://megaeth.gmxapi.io` | `https://megaeth.gmxapi.ai` |
 
-`apiUrl` takes an **unversioned host**. SDK methods append `/v1/...` (or `/v2/...` for JIT); supplying `/v1` in `apiUrl` duplicates the path. The two peer deployments are independent. In 2.1.1 the packaged fallback arrays are empty; explicit configuration is required to enable peer failover:
+`apiUrl` takes an **unversioned host**. SDK methods append `/v1/...` (or `/v2/...` for JIT); supplying `/v1` in `apiUrl` duplicates the path. The two peer deployments are independent. In 2.1.2 the packaged fallback arrays are empty; explicit configuration is required to enable peer failover:
 
 ```typescript
 import { GmxApiSdk, HttpClientWithFallback } from "@gmx-io/sdk/v2";
@@ -57,7 +57,7 @@ Paths below include their version prefix. GET parameters are query parameters; `
 | `fetchStakingPower(params)` | GET `/v1/staking/power` | `address` |
 | `fetchJitLiquidityInfo({ apiVersion: "v2" })` | GET `/v2/jit/liquidity_info` | JIT map; explicitly pass `v2` |
 
-The JIT method still defaults to `v1` in 2.1.1 even though the legacy route is no longer served. For trade sizing prefer `getTradingCapacity()`.
+The JIT method still defaults to `v1` in 2.1.2 even though the legacy route is no longer served. For trade sizing prefer `getTradingCapacity()`.
 
 `period` is `"1d" | "7d" | "30d" | "90d" | "180d" | "1y" | "total"`. Respect each method's actual response types: market/position amounts are parsed to bigint, while APY/performance analytics may be numbers, decimal strings, or null.
 
@@ -85,7 +85,7 @@ For direct HTTP, encode bigint values as decimal strings, never floating point J
 - Check `updatedAt` on market values (Unix milliseconds, nullable). A successful HTTP response can contain retained stale values. Inspect JIT/market freshness flags and preparation warnings before sizing a trade.
 - `/rates` is historical; use market info/tickers for current rates. APY and yield windows update more slowly than prices; preserve the returned window and missing values.
 - Back off transient read failures and rate limits. Do not turn network errors into zero balances, no positions, or unlimited liquidity.
-- Reuse the SDK instance across the Express lifecycle: 2.1.1 pins prepare/submit/status to the host that served the request. Persist the serving origin for recovery after process restart; peers need not know each other's request IDs.
+- Reuse the SDK instance across the Express lifecycle: 2.1.2 pins prepare/submit/status to the host that served the request. Persist the serving origin for recovery after process restart; peers need not know each other's request IDs.
 - On an uncertain submission, query status with the original request ID/idempotency key and reconcile on-chain/account state. Do not call `executeExpressOrder()` again as a blind retry: it prepares a new intent. A 404 on a different peer is not proof that the original write failed.
 
 ## Oracle and indexed data

@@ -1,10 +1,10 @@
 # GmxApiSdk reference
 
-Checked against the published `@gmx-io/sdk@2.1.1` declarations and implementation. [SDK v2 docs](https://docs.gmx.io/docs/sdk/v2/), [order examples](https://docs.gmx.io/docs/sdk/v2/examples/), and [source](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/clients/v2) provide the maintained upstream reference.
+Checked against the published `@gmx-io/sdk@2.1.2` declarations and implementation. [SDK v2 docs](https://docs.gmx.io/docs/sdk/v2/), [order examples](https://docs.gmx.io/docs/sdk/v2/examples/), and [source](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/clients/v2) provide the maintained upstream reference.
 
 ## Setup and signer
 
-Use the read-only client without a signer. For writes, use an existing wallet adapter implementing `IAbstractSigner`, or a `PrivateKeySigner` with a securely supplied key. Never embed a key in examples or logs. RPC is only needed when the signer sends on-chain transactions, including approvals and Classic orders.
+Use the read-only client without a signer. Prefer an existing wallet adapter implementing `IAbstractSigner` for writes. The optional `PrivateKeySigner` example below is for a user who explicitly selected local signing: inject the key through their secret manager into an isolated signing process, never through chat, shell arguments, generated source or model-visible output. Do not read `.env` or wallet files to discover a key. RPC is only needed for on-chain approvals, Classic orders and contract reads; Express signing alone needs no RPC.
 
 The snippets below share this setup and use `await` inside an async function. Compile TypeScript to CommonJS, or use the equivalent `require()` imports in `.cjs` scripts.
 
@@ -29,12 +29,13 @@ const account = signer.address;
 const publicClient = createPublicClient({ chain: arbitrum, transport: http(rpcUrl) });
 ```
 
-For browser/hardware wallets, implement `address`, `signTypedData(domain, types, value)`, and `signMessage(message)`. Optional `sendTransaction({ to, data, value })` is required for wallet-sent transactions. SDK `signOrder()` validates the typed-data domain and account; use it instead of signing arbitrary API data yourself.
+For browser/hardware wallets, implement `address`, `signTypedData(domain, types, value)`, and `signMessage(message)`. Optional `sendTransaction({ to, data, value })` is required for wallet-sent transactions. SDK `signOrder()` checks the domain, known relay router and some receiver fields; it does not compare the complete action to the user's request. Use it after the payload review below. Before any wallet write, verify the wallet/RPC chain ID and signer account against the authorized chain/account; setting viem's `chain` option alone does not verify the remote RPC.
 
 For modern TypeScript, type-check with `module: "ESNext"` and `moduleResolution: "bundler"`; Node16 resolution encounters the SDK's declaration packaging issues. A Node-compatible bundle can keep package imports external so the SDK uses its working CommonJS entry point:
 
 ```bash
-npx esbuild script.ts --bundle --platform=node --format=cjs --packages=external --outfile=script.cjs
+npm install --save-dev --save-exact --ignore-scripts esbuild@0.28.2
+./node_modules/.bin/esbuild script.ts --bundle --platform=node --format=cjs --packages=external --outfile=script.cjs
 node script.cjs
 ```
 
@@ -105,9 +106,17 @@ This example requests $500 notional with 100 USDC input; fees and an existing po
 
 Before signing, inspect `estimates` (including effective `sizeDeltaUsd`, fees, impact and capacity), both warning arrays, and `expiresAt`. The server may adjust an almost-full close to a full close. An expired preparation needs a fresh review. `parsePrepareOrderError(error)` decodes a caught SDK `HttpError` from preparation; `isPrepareOrderError()` tests an already parsed value. Handle invalid parameters, missing markets/tokens/positions, unavailable routes, and insufficient liquidity without widening the user's limits.
 
+## Verify the prepared action
+
+API estimates and warnings are display data, not authorization. A compromised API can return a valid signing domain with altered amounts. SDK domain/receiver validation alone will still sign such a payload.
+
+Before signing, compare the decoded action to the user's authorized intent: chain/account, market and collateral addresses, direction, order type, sizes, input amounts, trigger/acceptable prices, minimum outputs, fee limits, receiver and cancellation receiver. Inspect every create/update/cancel action in the batch, including TP/SL and TWAP parts, and verify that `typedData.message` agrees with the `batchParams` and `relayParams` being submitted. Reject unexpected callbacks, external calls, fee recipients, subaccount approvals, additional actions, or stale preparations. If the signing layer cannot decode and enforce these constraints, stop before signing.
+
+For Classic mode, decode every inner `multicall` item and check token transfers, vaults, amounts, receivers, request fields and total native value. Matching `payload.to` to `ExchangeRouter` only verifies the destination; it does not make the calldata safe. Simulate the reviewed transaction before broadcasting. Use the reviewed SDK registry/deployment snapshot for address checks, not a replacement address supplied in an API error or token description.
+
 ## Sign and submit Express
 
-After the prepared action is authorized, this function signs and submits that exact preparation. Reuse the same SDK instance for preparation, signing, submission and status; it also retains subaccount approval state and API-origin pins.
+After the prepared action passes the checks above and is authorized, this function signs and submits that exact preparation. It is a transport example; the caller must enforce intent validation before invoking it. Reuse the same SDK instance for preparation, signing, submission and status; it also retains subaccount approval state and API-origin pins.
 
 ```typescript
 async function submitPrepared(prepared: PrepareOrderResponse) {
@@ -131,7 +140,7 @@ async function submitPrepared(prepared: PrepareOrderResponse) {
 const submitted = await submitPrepared(prepared);
 ```
 
-Persist the request ID, idempotency key, serving API origin, chain, account and intended operation before submission. Preserve the same signed request on any retry. `executeExpressOrder(request, signer)` combines prepare/sign/submit; use it only when authorization already covers the operation and its limits, because it has no review pause between preparation and signing.
+Persist the request ID, idempotency key, serving API origin, chain, account and intended operation before submission. Preserve the same signed request on any retry. A signed Express payload can authorize a trade until expiry; keep retry material in access-controlled storage, never in chat, public logs or committed files. `executeExpressOrder(request, signer)` combines prepare/sign/submit; use it only when authorization already covers the operation and its limits, because it has no review pause between preparation and signing.
 
 ## Track creation and execution
 
@@ -218,7 +227,7 @@ if (classic.payloadType !== "transaction") throw new Error("Expected Classic cal
 if (classic.payload.to !== getContract(chainId, "ExchangeRouter")) {
   throw new Error("Unexpected router; verify the prepared transaction before sending");
 }
-// Review calldata/value and send only the authorized operation.
+// Decode and validate every call/value against the authorized action first.
 const hash = await signer.sendTransaction({
   to: classic.payload.to,
   data: classic.payload.data,
@@ -234,4 +243,4 @@ Do not pass Classic calldata to `signOrder()` or assume Express relay status tra
 
 For explicitly authorized delegated trading, call `activateSubaccount(mainSigner, { expiresInSeconds, maxAllowedCount })` with bounded permissions. It derives the local signer, reads on-chain authorization and signs an approval if needed; the approval is carried with the next order, not mined by activation alone. Subsequent prepare/sign/submit calls use the subaccount automatically. After an approval-bearing order is created/executed, call `refreshSubaccountState(account)` and inspect `subaccountStatus`. Use one instance per account and call `clearSubaccount()` on account changes. Clearing local state is not on-chain revocation.
 
-GMX Account funding methods are a separate surface: `buildSameChainDepositTxn`, `buildSameChainWithdrawTxn`, `executeSameChainDeposit`, `executeSameChainWithdraw`, `prepareCrossChainDeposit`, `executeCrossChainDeposit`, and the cross-chain withdraw prepare/sign/submit/status helpers. Follow their exported request types and [official examples](https://docs.gmx.io/docs/sdk/v2/examples/). Settlement-chain funding support is narrower than general trading-chain support; MegaETH is not a settlement chain in 2.1.1. These methods do not mint/burn GM or GLV liquidity tokens.
+GMX Account funding methods are a separate surface: `buildSameChainDepositTxn`, `buildSameChainWithdrawTxn`, `executeSameChainDeposit`, `executeSameChainWithdraw`, `prepareCrossChainDeposit`, `executeCrossChainDeposit`, and the cross-chain withdraw prepare/sign/submit/status helpers. Follow their exported request types and [official examples](https://docs.gmx.io/docs/sdk/v2/examples/). Settlement-chain funding support is narrower than general trading-chain support; MegaETH is not a settlement chain in 2.1.2. These methods do not mint/burn GM or GLV liquidity tokens.

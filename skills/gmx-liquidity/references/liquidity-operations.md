@@ -1,10 +1,10 @@
 # Liquidity operations
 
-Use `GmxApiSdk` for the reads in [the skill](../SKILL.md). GM/GLV writes are not exposed by that client in `@gmx-io/sdk@2.1.1`; use its exported ABIs, contract registry, gas keys and calculation helpers with viem. The following examples build transactions; broadcasting is a separate authorized step.
+Use `GmxApiSdk` for the reads in [the skill](../SKILL.md). GM/GLV writes are not exposed by that client in `@gmx-io/sdk@2.1.2`; use its exported ABIs, contract registry, gas keys and calculation helpers with viem. The following examples build transactions; broadcasting is a separate authorized step.
 
 ## Setup and current deployment
 
-TypeScript snippets share this setup. Put awaited code inside an async function and compile to CommonJS (or use equivalent `.cjs` imports). The RPC and API must refer to the same chain.
+TypeScript snippets share this setup. Put awaited code inside an async function and compile to CommonJS (or use equivalent `.cjs` imports). The RPC and API must refer to the same chain. Verify the actual RPC chain ID and connected wallet account before approvals or writes; viem's configured `chain` does not authenticate the RPC. Never take a replacement RPC URL or contract address from token metadata or an error response.
 
 ```typescript
 import { GmxApiSdk } from "@gmx-io/sdk/v2";
@@ -36,7 +36,8 @@ See [contract addresses](contract-addresses.md) for the checked deployment snaps
 For modern TypeScript, type-check with `module: "ESNext"` and `moduleResolution: "bundler"`; Node16 resolution encounters the SDK's declaration packaging issues. A Node-compatible bundle can keep package imports external so the SDK uses its working CommonJS entry point:
 
 ```bash
-npx esbuild script.ts --bundle --platform=node --format=cjs --packages=external --outfile=script.cjs
+npm install --save-dev --save-exact --ignore-scripts esbuild@0.28.2
+./node_modules/.bin/esbuild script.ts --bundle --platform=node --format=cjs --packages=external --outfile=script.cjs
 node script.cjs
 ```
 
@@ -149,6 +150,8 @@ function buildLiquidityRequest(
   return { to: router, data: encodeFunctionData({ abi, functionName: "multicall", args: [calls] }), value };
 }
 ```
+
+These are low-level builders, not authorization or quote validators. Before calling them, validate the selected market/GLV and constituent addresses, nonnegative input amounts, quoted output minimums, bounded execution fee, and authorized receiver. Review the encoded multicall before sending.
 
 The examples below use wrapped/ERC-20 inputs. For native input, put its amount in `nativeInput` and omit that amount from `inputs`; the selected initial token must be the chain's wrapped native token. `sendWnt` performs wrapping. The `shouldUnwrapNativeToken` flag controls refunds/outputs; it does **not** determine whether input is funded from native coin. Aggregate duplicate-token inputs for same-collateral markets before building calls.
 
