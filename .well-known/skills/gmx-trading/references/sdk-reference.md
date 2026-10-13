@@ -148,8 +148,11 @@ function buildVerifiedExpressTypedData(prepared: PrepareOrderResponse, expected:
   const { externalCalls, tokenPermits, fee, deadline } = relayParams;
   const now = Math.floor(Date.now() / 1000);
 
-  if (tokenPermits.length !== 0 || externalCalls.sendTokens.length !== 0 ||
-      externalCalls.externalCallTargets.length !== 0 || externalCalls.refundReceivers.length !== 0) {
+  const externalCallLists = [
+    externalCalls.sendTokens, externalCalls.sendAmounts, externalCalls.externalCallTargets,
+    externalCalls.externalCallDataList, externalCalls.refundTokens, externalCalls.refundReceivers,
+  ];
+  if (tokenPermits.length !== 0 || externalCallLists.some((list) => list.length !== 0)) {
     throw new Error("Unexpected token permits or external calls");
   }
   if (!getGasPaymentTokens(chainId).some((token) => sameAddress(token, fee.feeToken)) ||
