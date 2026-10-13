@@ -10,11 +10,11 @@ metadata:
 
 # GMX Liquidity
 
-Use `GmxApiSdk` from `@gmx-io/sdk/v2` for pool, token, APY, performance and wallet reads. Validated against published `@gmx-io/sdk@2.1.2` on 2026-09-30.
+Use `GmxApiSdk` from `@gmx-io/sdk/v2` for pool, token, APY, performance and wallet reads. Validated against published `@gmx-io/sdk@2.2.1` on 2026-10-13.
 
 **Liquidity writes still require contracts.** This release has no GM/GLV deposit, withdrawal or shift preparation methods. Its `buildSameChainDepositTxn()` and cross-chain funding methods fund a **GMX Account**, not a GM pool or GLV vault. Do not substitute them for liquidity provision or invent an `sdk.liquidity` module.
 
-Install the tested versions with `npm install --save-exact --ignore-scripts @gmx-io/sdk@2.1.2 viem@2.57.1`. Keep the generated lockfile and use `npm ci --ignore-scripts` for repeat installs. Review `npm audit` findings before enabling signing; pins do not guarantee safe dependencies. Upgrade deliberately after reviewing package changes. In 2.1.2, use `.cjs` for plain Node scripts or compile TypeScript to CommonJS because native Node ESM encounters extensionless SDK imports. Recheck installed types when upgrading.
+Install the tested versions with `npm install --save-exact --ignore-scripts --legacy-peer-deps @gmx-io/sdk@2.2.1 viem@2.57.1`. `--legacy-peer-deps` skips the unused react-native peer tree and its high-severity audit findings. Keep the generated lockfile and use `npm ci --ignore-scripts --legacy-peer-deps` for repeat installs. Review `npm audit` findings before enabling signing; pins do not guarantee safe dependencies. Upgrade deliberately after reviewing package changes. Through 2.2.1, use `.cjs` for plain Node scripts or compile TypeScript to CommonJS because native Node ESM encounters extensionless SDK imports. Recheck installed types when upgrading.
 
 | Network | Chain ID | API host |
 |---------|----------|----------|
@@ -29,25 +29,36 @@ A deployed `GlvRouter` alone does not mean a chain has an active, depositable GL
 ```javascript
 // Save as pools.cjs and run: node pools.cjs
 const { GmxApiSdk } = require("@gmx-io/sdk/v2");
+const { formatUnits, getAddress } = require("viem");
 
 async function main() {
   const sdk = new GmxApiSdk({ chainId: 42161 });
-  const [markets, values, apy, yieldPnl] = await Promise.all([
+  const [markets, values, apy] = await Promise.all([
     sdk.fetchMarkets(),
-    sdk.fetchMarketsInfo(),
+    sdk.fetchMarketsValues(),
     sdk.fetchApy({ period: "7d" }),
-    sdk.fetchGmPoolYieldPnl({ period: "7d", includeComponents: true }),
   ]);
-  console.log(JSON.stringify({ markets, values, apy, yieldPnl },
-    (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
+  const apyByMarket = new Map(Object.entries(apy.markets).map(([address, entry]) => [getAddress(address), entry]));
+  const valueByMarket = new Map(values.map((v) => [getAddress(v.marketTokenAddress), v]));
+  console.table(markets.filter((m) => m.isListed).map((m) => {
+    const address = getAddress(m.marketTokenAddress);
+    const poolValue = valueByMarket.get(address)?.poolValueMax;
+    const marketApy = apyByMarket.get(address)?.apy;
+    return {
+      symbol: m.symbol,
+      address,
+      apy7d: marketApy === undefined ? "unknown" : `${(marketApy * 100).toFixed(2)}%`,
+      poolValueUsd: poolValue === undefined ? "unknown" : Number(formatUnits(poolValue, 30)).toFixed(0),
+    };
+  }));
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
 ```
 
-- `fetchMarkets()` returns exact pool symbols and addresses; `fetchMarketsInfo()` returns `RawMarketInfo[]`, not the v1 `{ marketsInfoData, tokensData }` object. Match records by `marketTokenAddress` without changing casing.
-- `fetchMarketsConfig()` supplies pool caps and configuration. `fetchMarketsValues()` supplies changing state and `updatedAt`; `fetchTokensData()` supplies token prices and decimals. Check disabled markets, deposit caps, reserves and withdrawal availability before quoting.
-- `fetchApy({ period })` returns `markets` and `glvs` keyed by address, with `apy`, `baseApy`, and `bonusApr` values. Yield/performance is historical, not a guaranteed return.
+- Print compact per-market rows like the example. `fetchMarketsInfo()` returns `RawMarketInfo[]` (about 0.7 MB on Arbitrum), not the v1 `{ marketsInfoData, tokensData }` object; fetch it only for the selected pool's details and never dump it into context. Match records by `marketTokenAddress` with `getAddress()` or viem `isAddressEqual`, never by lowercasing.
+- `fetchMarketsConfig()` supplies pool caps and configuration. `fetchMarketsValues()` supplies changing state, `poolValueMax`/`poolValueMin` (30-decimal USD) and `updatedAt`; `fetchTokensData()` supplies token prices and decimals. Check disabled markets, deposit caps, reserves and withdrawal availability before quoting.
+- `fetchApy({ period })` returns `markets` and `glvs` keyed by address, with `apy`, `baseApy`, and `bonusApr` as fractions (`0.0117` = 1.17%). `glvs` can be empty although GLVs exist on-chain; a missing entry means unknown yield, not zero. Prefer `7d`/`30d`: performance routes reject `1d`, and `total` currently returns HTTP 500 for `fetchApy()` and `fetchGmPoolYieldPnl()` on Arbitrum; treat such errors as unknown data. Yield/performance is historical, not a guaranteed return.
 - `fetchGmPoolYieldPnl()` aligns fee APY and trader PnL to the same pool/window. Preserve missing (`null`) values. Trader PnL is from the trader's perspective; do not present positive trader PnL as LP profit.
 - `fetchGmUserEarnings({ account })` returns lifetime/recent fee earnings as decimal strings. `fetchWalletBalances({ address })` returns catalog balances; use ERC-20 `balanceOf` for a GM/GLV token absent from that response.
 

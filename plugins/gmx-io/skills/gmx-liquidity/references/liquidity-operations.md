@@ -1,6 +1,6 @@
 # Liquidity operations
 
-Use `GmxApiSdk` for the reads in [the skill](../SKILL.md). GM/GLV writes are not exposed by that client in `@gmx-io/sdk@2.1.2`; use its exported ABIs, contract registry, gas keys and calculation helpers with viem. The following examples build transactions; broadcasting is a separate authorized step.
+Use `GmxApiSdk` for the reads in [the skill](../SKILL.md). GM/GLV writes are not exposed by that client in `@gmx-io/sdk@2.2.1`; use its exported ABIs, contract registry, gas keys and calculation helpers with viem. The following examples build transactions; broadcasting is a separate authorized step.
 
 ## Setup and current deployment
 
@@ -8,6 +8,9 @@ TypeScript snippets share this setup. Put awaited code inside an async function 
 
 ```typescript
 import { GmxApiSdk } from "@gmx-io/sdk/v2";
+import {
+  getExecutionFeeConfig, getExecutionFeePriorityFeeAllowance, getGasPricePremium, getMaxPriorityFeePerGas,
+} from "@gmx-io/sdk/configs/chains";
 import { getContract } from "@gmx-io/sdk/configs/contracts";
 import { GAS_LIMITS_STATIC_CONFIG } from "@gmx-io/sdk/configs/gasLimits";
 import * as keys from "@gmx-io/sdk/configs/dataStore";
@@ -18,7 +21,7 @@ import glvRouterAbi from "@gmx-io/sdk/abis/GlvRouter";
 import glvReaderAbi from "@gmx-io/sdk/abis/GlvReader";
 import dataStoreAbi from "@gmx-io/sdk/abis/DataStore";
 import { createPublicClient, http, encodeFunctionData, erc20Abi, zeroAddress,
-  type Abi, type Address, type Hex } from "viem";
+  type Abi, type Account, type Address, type Chain, type Hex, type Transport, type WalletClient } from "viem";
 import { arbitrum } from "viem/chains";
 
 const chainId = 42161;
@@ -94,22 +97,39 @@ async function readGasLimits(): Promise<GasLimitsConfig> {
   return { ...GAS_LIMITS_STATIC_CONFIG[chainId], ...Object.fromEntries(entries) } as GasLimitsConfig;
 }
 
+// The contract requires executionFee >= adjustedGasLimit * tx.gasprice; raw eth_gasPrice can be below the next block's price
+async function quoteExecutionGasPrice() {
+  const config = getExecutionFeeConfig(chainId);
+  const useTip = config?.shouldUseMaxPriorityFeePerGas ?? false;
+  const [gasPrice, networkTip] = await Promise.all([
+    publicClient.getGasPrice(),
+    useTip ? publicClient.estimateMaxPriorityFeePerGas() : Promise.resolve(0n),
+  ]);
+  const chainTip = getMaxPriorityFeePerGas(chainId);
+  const maxPriorityFeePerGas = !useTip ? 0n : networkTip > chainTip ? networkTip : chainTip;
+  const base = gasPrice + maxPriorityFeePerGas;
+  const maxFeePerGas = base + (base * BigInt(config?.defaultBufferBps ?? 0)) / 10_000n +
+    (getGasPricePremium(chainId) ?? 0n) + getExecutionFeePriorityFeeAllowance(chainId);
+  return { maxFeePerGas, maxPriorityFeePerGas };
+}
+
 async function quoteGmDepositExecutionFee() {
-  const [gasLimits, gasPrice, tokens] = await Promise.all([
-    readGasLimits(), publicClient.getGasPrice(), sdk.fetchTokensData(),
+  const [gasLimits, fees, tokens] = await Promise.all([
+    readGasLimits(), quoteExecutionGasPrice(), sdk.fetchTokensData(),
   ]);
   const tokensData = Object.fromEntries(tokens.map((token) => [token.address, token]));
   const fee = getExecutionFee(
     chainId, gasLimits, tokensData,
     estimateExecuteDepositGasLimit(gasLimits, { swapsCount: 0, callbackGasLimit: 0n }),
-    gasPrice, estimateDepositOraclePriceCount(0),
+    fees.maxFeePerGas, estimateDepositOraclePriceCount(0),
   );
   if (!fee) throw new Error("Native-token price or gas data unavailable");
-  return fee.feeTokenAmount;
+  // Send the creation transaction with these fee fields so tx.gasprice cannot exceed the quoted price
+  return { executionFee: fee.feeTokenAmount, ...fees };
 }
 ```
 
-This example estimates a GM deposit with no swaps/callback. The exported helper applies the live DataStore gas multipliers and chain minimums; the supplied gas price must also reflect the network pricing/buffer chosen for submission. Use the matching helpers for other requests, and account for every swap and callback:
+This example estimates a GM deposit with no swaps/callback. `quoteExecutionGasPrice()` mirrors the GMX interface: the network gas price plus the chain's priority fee where it uses one, the chain's execution-fee buffer, premium and priority-fee allowance (the allowance needs SDK 2.2.x). Arbitrum charges wallet priority fees and its `eth_gasPrice` can be slightly below the latest base fee, so an unbuffered quote reverts with `InsufficientExecutionFee`. Always send the creation transaction with the returned `maxFeePerGas` and `maxPriorityFeePerGas`. Use the matching helpers for other requests, and account for every swap and callback:
 
 | Operation | Gas helper from `@gmx-io/sdk/utils/fees` | Oracle-count helper |
 |-----------|------------------------------------------------|---------------------|
@@ -153,7 +173,9 @@ function buildLiquidityRequest(
 
 These are low-level builders, not authorization or quote validators. Before calling them, validate the selected market/GLV and constituent addresses, nonnegative input amounts, quoted output minimums, bounded execution fee, and authorized receiver. Review the encoded multicall before sending.
 
-The examples below use wrapped/ERC-20 inputs. For native input, put its amount in `nativeInput` and omit that amount from `inputs`; the selected initial token must be the chain's wrapped native token. `sendWnt` performs wrapping. The `shouldUnwrapNativeToken` flag controls refunds/outputs; it does **not** determine whether input is funded from native coin. Aggregate duplicate-token inputs for same-collateral markets before building calls.
+The builders take wrapped/ERC-20 inputs as token amounts. For native input, pass its amount as `nativeInput` and set the matching token amount to zero; the selected initial token must be the chain's wrapped native token. `sendWnt` performs wrapping. The `shouldUnwrapNativeToken` flag controls refunds/outputs; it does **not** determine whether input is funded from native coin. Set it to `true` when the user pays with or wants to receive the native coin; otherwise a cancelled native-funded request refunds the wrapped token.
+
+For a same-collateral market (long token equals short token), pass that token as both `longToken` and `shortToken` and put the full amount in the long input. The contract records the vault balance increase once, as the long amount; a zero-address short token reverts.
 
 ## GM deposit
 
@@ -163,6 +185,7 @@ Inputs and the nonzero minimum output come from the selected market and a fresh 
 function buildGmDeposit(p: {
   receiver: Address; market: Address; longToken: Address; shortToken: Address;
   longAmount: bigint; shortAmount: bigint; minMarketTokens: bigint; executionFee: bigint;
+  nativeInput: bigint; shouldUnwrapNativeToken: boolean;
 }) {
   const createData = encodeFunctionData({
     abi: exchangeRouterAbi, functionName: "createDeposit", args: [{
@@ -171,13 +194,13 @@ function buildGmDeposit(p: {
         market: p.market, initialLongToken: p.longToken, initialShortToken: p.shortToken,
         longTokenSwapPath: [], shortTokenSwapPath: [],
       },
-      minMarketTokens: p.minMarketTokens, shouldUnwrapNativeToken: false,
+      minMarketTokens: p.minMarketTokens, shouldUnwrapNativeToken: p.shouldUnwrapNativeToken,
       executionFee: p.executionFee, callbackGasLimit: 0n, dataList: [],
     }],
   });
   return buildLiquidityRequest(exchangeRouter, exchangeRouterAbi, getContract(chainId, "DepositVault"), [
     { token: p.longToken, amount: p.longAmount }, { token: p.shortToken, amount: p.shortAmount },
-  ], createData, p.executionFee);
+  ], createData, p.executionFee, p.nativeInput);
 }
 ```
 
@@ -188,7 +211,7 @@ Approve the GM token and send it to `WithdrawalVault`. The amount is taken from 
 ```typescript
 function buildGmWithdrawal(p: {
   receiver: Address; market: Address; amount: bigint;
-  minLong: bigint; minShort: bigint; executionFee: bigint;
+  minLong: bigint; minShort: bigint; executionFee: bigint; shouldUnwrapNativeToken: boolean;
 }) {
   const createData = encodeFunctionData({
     abi: exchangeRouterAbi, functionName: "createWithdrawal", args: [{
@@ -197,7 +220,7 @@ function buildGmWithdrawal(p: {
         market: p.market, longTokenSwapPath: [], shortTokenSwapPath: [],
       },
       minLongTokenAmount: p.minLong, minShortTokenAmount: p.minShort,
-      shouldUnwrapNativeToken: false, executionFee: p.executionFee, callbackGasLimit: 0n, dataList: [],
+      shouldUnwrapNativeToken: p.shouldUnwrapNativeToken, executionFee: p.executionFee, callbackGasLimit: 0n, dataList: [],
     }],
   });
   return buildLiquidityRequest(exchangeRouter, exchangeRouterAbi, getContract(chainId, "WithdrawalVault"), [
@@ -238,7 +261,7 @@ Use `GlvRouter` and `GlvVault`. `market` must be an eligible constituent. A GM-t
 function buildGlvDeposit(p: {
   receiver: Address; glv: Address; market: Address; longToken: Address; shortToken: Address;
   funding: { kind: "gm"; amount: bigint } | { kind: "tokens"; longAmount: bigint; shortAmount: bigint };
-  minGlvTokens: bigint; executionFee: bigint;
+  minGlvTokens: bigint; executionFee: bigint; nativeInput: bigint; shouldUnwrapNativeToken: boolean;
 }) {
   const isGm = p.funding.kind === "gm";
   const inputs = p.funding.kind === "gm"
@@ -254,10 +277,10 @@ function buildGlvDeposit(p: {
         longTokenSwapPath: [], shortTokenSwapPath: [],
       },
       minGlvTokens: p.minGlvTokens, executionFee: p.executionFee, callbackGasLimit: 0n,
-      shouldUnwrapNativeToken: false, isMarketTokenDeposit: isGm, dataList: [],
+      shouldUnwrapNativeToken: p.shouldUnwrapNativeToken, isMarketTokenDeposit: isGm, dataList: [],
     }],
   });
-  return buildLiquidityRequest(glvRouter, glvRouterAbi, getContract(chainId, "GlvVault"), inputs, createData, p.executionFee);
+  return buildLiquidityRequest(glvRouter, glvRouterAbi, getContract(chainId, "GlvVault"), inputs, createData, p.executionFee, p.nativeInput);
 }
 ```
 
@@ -268,7 +291,7 @@ Approve/fund the GLV share token, not the constituent GM token or request custod
 ```typescript
 function buildGlvWithdrawal(p: {
   receiver: Address; glv: Address; market: Address; amount: bigint;
-  minLong: bigint; minShort: bigint; executionFee: bigint;
+  minLong: bigint; minShort: bigint; executionFee: bigint; shouldUnwrapNativeToken: boolean;
 }) {
   const createData = encodeFunctionData({
     abi: glvRouterAbi, functionName: "createGlvWithdrawal", args: [{
@@ -277,7 +300,7 @@ function buildGlvWithdrawal(p: {
         market: p.market, glv: p.glv, longTokenSwapPath: [], shortTokenSwapPath: [],
       },
       minLongTokenAmount: p.minLong, minShortTokenAmount: p.minShort,
-      shouldUnwrapNativeToken: false, executionFee: p.executionFee, callbackGasLimit: 0n, dataList: [],
+      shouldUnwrapNativeToken: p.shouldUnwrapNativeToken, executionFee: p.executionFee, callbackGasLimit: 0n, dataList: [],
     }],
   });
   return buildLiquidityRequest(glvRouter, glvRouterAbi, getContract(chainId, "GlvVault"), [
@@ -288,11 +311,29 @@ function buildGlvWithdrawal(p: {
 
 ## Submit, follow execution, cancel
 
-1. Review the built transaction, input allowances/balances, quote minimums and fee against the authorized operation. Simulate the creation multicall from the real account and estimate its transaction gas before sending through the connected wallet/signer. A successful creation simulation does not guarantee keeper execution at later prices.
+`IAbstractSigner.sendTransaction({ to, data, value })` cannot carry fee fields, so send through a viem wallet client for the connected, verified account:
+
+```typescript
+async function sendLiquidityRequest(
+  walletClient: WalletClient<Transport, Chain, Account>,
+  tx: { to: Address; data: Hex; value: bigint },
+  fees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint },
+) {
+  const request = { account: walletClient.account, ...tx, ...fees };
+  // Simulate at the real fee: without fee fields the node runs it at tx.gasprice = 0, so any execution fee passes
+  const gas = await publicClient.estimateGas(request);
+  const hash = await walletClient.sendTransaction({ ...request, chain: walletClient.chain, gas });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("Liquidity request creation reverted");
+  return receipt;
+}
+```
+
+1. Review the built transaction, input allowances/balances, quote minimums and fee against the authorized operation. Simulate and estimate the creation multicall from the real account with the same `maxFeePerGas`/`maxPriorityFeePerGas` as the real transaction. A successful creation simulation does not guarantee keeper execution at later prices.
 2. Save the transaction hash and wait for a successful receipt. Wallet writes return a hash, **not** the Solidity `bytes32` request key. Decode the matching `DepositCreated`, `WithdrawalCreated`, `ShiftCreated`, `GlvDepositCreated` or `GlvWithdrawalCreated` event in `EventEmitter` logs to obtain the request key. These named events are carried by the emitter's generic `EventLog*` ABI; inspect its event name and data items rather than assuming a standalone ABI event named `DepositCreated`.
 3. Follow that key to the corresponding `*Executed` or `*Cancelled` event, then refresh LP/underlying balances. Record cancellation reasons and refunds. `fetchOrderStatus()` tracks API order requests, not these direct liquidity requests. Use a bounded wait and leave unresolved requests pending; reconcile before resubmitting.
-4. If cancellation is requested and allowed by the current request age/state, send `cancelDeposit(key)`, `cancelWithdrawal(key)` or `cancelShift(key)` to `ExchangeRouter`; GLV requests use `cancelGlvDeposit(key)` / `cancelGlvWithdrawal(key)` on `GlvRouter`. The creator must authorize it. Check the live cancellation delay and race with keeper execution; verify the cancellation receipt/event and actual refund recipient.
+4. If cancellation is requested and allowed by the current request age/state, send `cancelDeposit(key)`, `cancelWithdrawal(key)` or `cancelShift(key)` to `ExchangeRouter`; GLV requests use `cancelGlvDeposit(key)` / `cancelGlvWithdrawal(key)` on `GlvRouter`. The creator must authorize it. Check the live cancellation delay and race with keeper execution; verify the cancellation receipt/event.
 
-Do not assume tokens or excess execution fees always return to `receiver`: cancellation/output routing depends on the request type and stored account/receiver fields. Inspect those fields and events. An executed shift burns source GM and mints destination GM atomically in keeper execution; request creation is still asynchronous.
+A cancelled request returns its inputs to `account`; executed outputs and the unused execution fee go to `receiver`. An executed shift burns source GM and mints destination GM atomically in keeper execution; request creation is still asynchronous.
 
 Sources: [SDK ABIs](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/abis), [SDK gas helpers](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/utils/fees), [ExchangeRouter](https://docs.gmx.io/docs/api/contracts/exchange-router/), [GlvRouter](https://docs.gmx.io/docs/api/contracts/glv-router/), [event monitoring](https://docs.gmx.io/docs/api/contracts/events/).

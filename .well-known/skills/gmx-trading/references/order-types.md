@@ -1,6 +1,6 @@
 # Order types with GmxApiSdk
 
-Use string `kind` / `orderType` values in `prepareOrder()`. The API builds the contract enum and calldata. This reference targets `@gmx-io/sdk@2.1.2`; see [request types](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/utils/orderTransactions/api.ts) and [official examples](https://docs.gmx.io/docs/sdk/v2/examples/).
+Use string `kind` / `orderType` values in `prepareOrder()`. The API builds the contract enum and calldata. This reference targets `@gmx-io/sdk@2.2.1`; see [request types](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/utils/orderTransactions/api.ts) and [official examples](https://docs.gmx.io/docs/sdk/v2/examples/).
 
 ## Request mapping and triggers
 
@@ -13,9 +13,9 @@ Use string `kind` / `orderType` values in `prepareOrder()`. The API builds the c
 | Take profit | `decrease` | `take-profit` | Price >= trigger | Price <= trigger |
 | Stop loss | `decrease` | `stop-loss` | Price <= trigger | Price >= trigger |
 | Swap now | `swap` | `market` | Output minimum must be met | Not directional |
-| Scheduled parts | `increase`, `decrease`, or `swap` | `twap` | Per-part schedule/constraints | Per-part schedule/constraints |
+| Scheduled parts | `increase` or `decrease` | `twap` | Per-part schedule/constraints | Per-part schedule/constraints |
 
-Limit swaps use `kind: "swap", orderType: "limit"` and execute when their output constraint is fillable. Check the current API's swap trigger/ratio schema before constructing a conditional swap; do not apply a perpetual's USD trigger blindly. `Liquidation` is not a user-creatable API order.
+Only market swaps work through the API today: `limit` and `twap` swaps pass request validation but fail preparation with `NO_SWAP_PATH`. `Liquidation` is not a user-creatable API order.
 
 For reference, the contract `OrderType` enum is `MarketSwap=0`, `LimitSwap=1`, `MarketIncrease=2`, `LimitIncrease=3`, `MarketDecrease=4`, `LimitDecrease=5`, `StopLossDecrease=6`, `Liquidation=7`, `StopIncrease=8`. A take-profit is a `LimitDecrease` on-chain.
 
@@ -25,17 +25,16 @@ For reference, the contract `OrderType` enum is `MarketSwap=0`, `LimitSwap=1`, `
 |-------|------|
 | Increase/decrease `size`, `tpsl[].size`, edit `newSize` | USD, 30 decimals |
 | Position `triggerPrice` / edit `newTriggerPrice` | USD price, 30 decimals |
-| `collateralToPay.amount` | Input token decimals |
-| Swap `size` | Input token decimals |
+| `collateralToPay.amount` (also the swap input) | Input token decimals |
 | Collateral operation `amount` | Position collateral token decimals |
 | `slippage`, `executionFeeBufferBps` | Numeric basis points, 10,000 = 100% |
 | `twapConfig.duration` | Seconds |
 
-Use `parseUnits()` and bigint arithmetic. Raw contract position price fields have a different scale (`price30 / 10**indexTokenDecimals`); let API preparation handle this. Do not copy `contractTriggerPrice` from a fetched order into the API's `newTriggerPrice` without conversion.
+Use `parseUnits()` and bigint arithmetic. `triggerPrice` and `acceptablePrice` on `fetchOrders()` results are contract prices (`price30 / 10**indexTokenDecimals`), not USD30; swap orders store a raw ratio. Convert a kept perpetual order price with `parseContractPrice(price, indexTokenDecimals)` from `@gmx-io/sdk/utils/tokens` before passing it back to the API. See [editing](sdk-reference.md#edit-cancel-or-change-collateral).
 
 ## TP/SL at entry
 
-`prepareOrder()` accepts `tpsl` only with an increase of type `market` or `limit`. Prices and sizes below illustrate a user-selected strategy, not recommended levels. Reuse the resolved market/token and account from [SDK reference](sdk-reference.md).
+`prepareOrder()` accepts up to 10 `tpsl` entries with an increase of type `market`, `limit` or `stop-market`. Prices and sizes below illustrate a user-selected strategy, not recommended levels. Reuse the resolved market/token and account from [SDK reference](sdk-reference.md).
 
 ```typescript
 const withProtection = await sdk.prepareOrder({
@@ -56,7 +55,7 @@ const withProtection = await sdk.prepareOrder({
 });
 ```
 
-Omitting a TP/SL `size` requests full-position protection. Review the resulting batch, especially when adding to an existing position. Existing pending TP/SL orders also matter; an additional batch can overlap their size. Use `fetchPositionsInfo({ address, includeRelatedOrders: true })` and `fetchOrders()` to inspect them.
+Omitting a TP/SL `size` uses the increase `size`, not the resulting position, so a TP/SL added to an existing position covers only the added size. Attached TP/SL orders get no acceptable price (0 for longs, `maxUint256` for shorts); the trigger is their only price guard. Review the resulting batch. Existing pending TP/SL orders also matter; an additional batch can overlap their size. Use `fetchPositionsInfo({ address, includeRelatedOrders: true })` and `fetchOrders()` to inspect them.
 
 Auto-cancellation is an order property, not a promise for every conditional order. Check the returned `autoCancel` and current contract constraints rather than hardcoding per-chain maximums. TP/SL creation does not prove that an entry filled or that every attached trigger will later execute.
 
@@ -65,9 +64,7 @@ Auto-cancellation is an order property, not a promise for every conditional orde
 ```typescript
 const swap = await sdk.prepareOrder({
   kind: "swap",
-  symbol: market.symbol,
   orderType: "market",
-  size: parseUnits("25", usdc.decimals),
   collateralToPay: { amount: parseUnits("25", usdc.decimals), token: usdc.symbol },
   receiveToken: "ETH",
   slippage: 30,
@@ -76,7 +73,7 @@ const swap = await sdk.prepareOrder({
 });
 ```
 
-Resolve the receive token on the chosen chain first. Inspect the prepared route, fees and minimum output. `manualSwapPath`, when supplied, contains market addresses, not token addresses. Native and wrapped tokens have different funding/receipt behavior.
+The input amount comes from `collateralToPay.amount`; swaps need no `symbol` or `size`. Resolve the receive token on the chosen chain first. Inspect the prepared route, fees and minimum output. `manualSwapPath`, when supplied, contains market addresses, not token addresses. Native and wrapped tokens have different funding/receipt behavior. Existing swap orders cannot be edited.
 
 ## TWAP
 
@@ -97,7 +94,7 @@ const twap = await sdk.prepareOrder({
 });
 ```
 
-The size/input is the total to split, not the per-part amount. Check per-part minimums and aggregate fees. For a near-full decrease, inspect the effective `estimates.sizeDeltaUsd` before division. Track every returned order key through execution or cancellation; a single part's receipt is not completion of the TWAP.
+The size/input is the total to split, not the per-part amount. Check per-part minimums and aggregate fees. For a near-full decrease, inspect the effective `estimates.sizeDeltaUsd` before division. Track every returned order key through execution or cancellation; a single part's receipt is not completion of the TWAP. To change a TWAP, cancel its parts instead of editing them: an edit resets `validFromTime`, so the edited part becomes executable immediately.
 
 ## Execution outcomes
 

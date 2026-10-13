@@ -1,8 +1,8 @@
 # Contract addresses
 
-Snapshot checked on 2026-09-30 against `@gmx-io/sdk@2.1.2` and the [GMX interface release registry](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts). Protocol deployment versions (such as v2.2c) and npm SDK versions are different version schemes.
+Snapshot checked on 2026-10-13 against `@gmx-io/sdk@2.2.1` and the [GMX interface release registry](https://github.com/gmx-io/gmx-interface/blob/release/sdk/src/configs/contracts.ts). Protocol deployment versions (such as v2.2c) and npm SDK versions are different version schemes.
 
-Resolve addresses with the installed SDK and recheck the [official deployment list](https://docs.gmx.io/docs/api/contracts/addresses/) before writes after an upgrade. Do not combine a new address with an old ABI or copy an address from another chain. Preserve source casing.
+Resolve addresses with the installed SDK and recheck the [official deployment list](https://docs.gmx.io/docs/api/contracts/addresses/) before writes after an upgrade. Do not combine a new address with an old ABI or copy an address from another chain. Compare addresses with viem `isAddressEqual` after an `isAddress` guard, not with `===`: registry casing is not uniform (Avalanche `ReferralStorage` is lowercase).
 
 ```typescript
 import { getContract } from "@gmx-io/sdk/configs/contracts";
@@ -13,7 +13,7 @@ const approvalSpender = getContract(chainId, "SyntheticsRouter");
 const glvRouter = getContract(chainId, "GlvRouter");
 ```
 
-`SyntheticsRouter` is the ERC-20 approval spender for these standard wallet flows. `ExchangeRouter` and `GlvRouter` are transaction entry points. The Solidity `Router` / `Reader` names appear in SDK configuration as `SyntheticsRouter` / `SyntheticsReader`.
+`SyntheticsRouter` is the ERC-20 approval spender for these standard wallet flows. `ExchangeRouter` and `GlvRouter` are transaction entry points. The Solidity `Router` / `Reader` names appear in SDK configuration as `SyntheticsRouter` / `SyntheticsReader`. Never use the bare names: they type-check but resolve elsewhere. `getContract(42161, "Reader")` returns the V1 Reader, `"Router"` throws on Arbitrum and Avalanche, and on MegaETH both return the zero address without throwing.
 
 The retained `GelatoRelayRouter` contract name does not mean the current API uses the Gelato relay service: Express orders are submitted through GMX Relay. `SubaccountRouter` is legacy for order execution; use the API's subaccount flow rather than constructing new delegated trades through it.
 
