@@ -4,7 +4,7 @@ description: Trade GMX perpetuals and swap tokens using GmxApiSdk. Use for marke
 license: MIT
 metadata:
   author: gmx-io
-  version: "0.3.0"
+  version: "0.3.1"
   chains: "arbitrum, avalanche, megaeth"
 ---
 

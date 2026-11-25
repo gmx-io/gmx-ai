@@ -13,7 +13,7 @@
       ],
       "metadata": {
         "author": "gmx-io",
-        "version": "0.3.0",
+        "version": "0.3.1",
         "license": "MIT",
         "chains": "arbitrum, avalanche, megaeth"
       }
@@ -29,7 +29,7 @@
       ],
       "metadata": {
         "author": "gmx-io",
-        "version": "0.3.0",
+        "version": "0.3.1",
         "license": "MIT",
         "chains": "arbitrum, avalanche, megaeth"
       }

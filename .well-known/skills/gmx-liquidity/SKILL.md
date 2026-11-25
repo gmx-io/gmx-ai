@@ -4,7 +4,7 @@ description: Query GMX GM pools and GLV vaults with GmxApiSdk, and provide or wi
 license: MIT
 metadata:
   author: gmx-io
-  version: "0.3.0"
+  version: "0.3.1"
   chains: "arbitrum, avalanche, megaeth"
 ---
 
