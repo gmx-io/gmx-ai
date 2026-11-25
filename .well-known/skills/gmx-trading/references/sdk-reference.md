@@ -1,6 +1,6 @@
 # GmxApiSdk reference
 
-Checked against the published `@gmx-io/sdk@2.2.1` declarations and implementation. [SDK v2 docs](https://docs.gmx.io/docs/sdk/v2/), [order examples](https://docs.gmx.io/docs/sdk/v2/examples/), and [source](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/clients/v2) provide the maintained upstream reference.
+Checked against the published `@gmx-io/sdk@2.2.1` declarations and implementation. Imports, methods and API routes rechecked against `@gmx-io/sdk@2.9.1` on 2026-11-25. [SDK v2 docs](https://docs.gmx.io/docs/sdk/v2/), [order examples](https://docs.gmx.io/docs/sdk/v2/examples/), and [source](https://github.com/gmx-io/gmx-interface/tree/release/sdk/src/clients/v2) provide the maintained upstream reference.
 
 ## Setup and signer
 
@@ -354,7 +354,7 @@ Cancellation supports explicit `orderIds`, or `all: true` only when all-account 
 `IAbstractSigner.sendTransaction()` cannot carry fee fields, so send Classic orders with a viem wallet client for the same verified account:
 
 ```typescript
-import exchangeRouterAbi from "@gmx-io/sdk/abis/ExchangeRouter";
+import { getAbi } from "@gmx-io/sdk/abis/getAbi";
 import { createWalletClient, decodeFunctionData } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -365,6 +365,7 @@ const classic = await sdk.prepareOrder({ ...request, mode: "classic" });
 if (classic.payloadType !== "transaction" || !sameAddress(classic.payload.to, getContract(chainId, "ExchangeRouter"))) {
   throw new Error("Unexpected Classic transaction");
 }
+const exchangeRouterAbi = getAbi(chainId, "ExchangeRouter"); // the v2.2.1 ABI; abis/ExchangeRouter is the 2.2c one
 const outer = decodeFunctionData({ abi: exchangeRouterAbi, data: classic.payload.data });
 if (outer.functionName !== "multicall") throw new Error("Expected an ExchangeRouter multicall");
 const orderVault = getContract(chainId, "OrderVault");

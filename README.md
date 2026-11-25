@@ -43,7 +43,7 @@ The API SDK does not yet build GM/GLV liquidity transactions. The skill provides
 
 ## Compatibility
 
-The examples and address snapshot were checked against published `@gmx-io/sdk@2.2.1` on 2026-10-13. The skills pin `@gmx-io/sdk@2.2.1` and `viem@2.57.1`, disable install scripts, install with `--legacy-peer-deps` to skip the SDK's unused react-native peer tree, and use a lockfile for repeat installs (`npm ci --ignore-scripts --legacy-peer-deps`). Review dependency audit findings and package changes before upgrading; version pins do not certify dependency safety. For plain Node scripts with 2.2.1, use CommonJS; native ESM encounters extensionless SDK imports.
+The examples were checked against published `@gmx-io/sdk@2.2.1` on 2026-10-13. Their SDK imports, methods and API routes and the address snapshot were rechecked against `@gmx-io/sdk@2.9.1` on 2026-11-25. The skills pin `@gmx-io/sdk@2.9.1` and `viem@2.57.1`, disable install scripts, install with `--legacy-peer-deps` to skip the SDK's unused react-native peer tree, and use a lockfile for repeat installs (`npm ci --ignore-scripts --legacy-peer-deps`). Review dependency audit findings and package changes before upgrading; version pins do not certify dependency safety. For plain Node scripts with 2.9.1, use CommonJS; native ESM encounters extensionless SDK imports.
 
 Skill files are synchronized across `skills/`, `.well-known/skills/`, and `plugins/gmx-io/skills/`.
 
